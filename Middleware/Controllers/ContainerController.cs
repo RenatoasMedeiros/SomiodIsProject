@@ -13,7 +13,7 @@ namespace Middleware.Controllers
     {
         string connectionString = Properties.Settings.Default.ConnStr;
 
-        // GET api/Containers
+        // GET api/somiod/app
         [HttpGet]
         [Route("api/somiod/{application}")]
         public IEnumerable<Container> GetAllContainers()
@@ -52,9 +52,8 @@ namespace Middleware.Controllers
             }
         }
 
-        // GET api/<controller>/5
-        [HttpGet]
-        [Route("api/containers/{id}")]
+        // GET api/somiod/
+        
         public IHttpActionResult GetContainerById(int id)
         {
             Container container = null;
@@ -102,7 +101,8 @@ namespace Middleware.Controllers
 
         }
 
-        
+        [HttpGet]
+        [Route("api/somiod/{application}/{container}")]
         public IHttpActionResult GetContainerByName(string name)
         {
             Container container = null;
