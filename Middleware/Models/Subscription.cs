@@ -11,7 +11,7 @@ namespace Middleware.Models
         public string Name { get; set; }
         public DateTime Creation_dt { get; set; }
         public int Parent { get; set; } // Parent should store the unique id of the parent resource
-        public int Event { get; set; } // 1 for creation, 2 for deletion
+        public string Event { get; set; } // 1 for creation, 2 for deletion
         public string Endpoint { get; set; }
     }
 }

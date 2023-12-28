@@ -12,7 +12,7 @@ namespace Middleware.Controllers
     public class ApplicationController : ApiController
     {
         // Update the connection string with your actual connection string
-        private string connectionString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\renat\Desktop\SomiodIsProject\SomiodIsProject\App_Data\Database1.mdf;Integrated Security=True";
+        string connectionString = Properties.Settings.Default.ConnStr;
 
         // GET: api/Application
         public IHttpActionResult GetApplications()
