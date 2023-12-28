@@ -11,10 +11,11 @@ namespace Middleware.Controllers
 {
     public class ApplicationController : ApiController
     {
-        // Update the connection string with your actual connection string
-        private string connectionString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\renat\Desktop\SomiodIsProject\SomiodIsProject\App_Data\Database1.mdf;Integrated Security=True";
+        string connectionString = Properties.Settings.Default.ConnStr;
+
 
         // GET: api/Application
+        [Route("api/somiod/Application")]
         public IHttpActionResult GetApplications()
         {
             List<string> applicationNames = DiscoverApplications();
@@ -22,6 +23,7 @@ namespace Middleware.Controllers
         }
 
         // GET: api/Application/1
+        [Route("api/somiod/Application/{id}")]
         public IHttpActionResult GetApplication(int id)
         {
             Application application = GetApplicationById(id);
@@ -34,6 +36,7 @@ namespace Middleware.Controllers
 
         // POST: api/Application
         [HttpPost]
+        [Route("api/somiod/Application")]
         public IHttpActionResult PostApplication(Application application)
         {
             if (ModelState.IsValid)
@@ -46,6 +49,7 @@ namespace Middleware.Controllers
 
         // PUT: api/Application/1
         [HttpPut]
+        [Route("api/somiod/Application/{id}")]
         public IHttpActionResult PutApplication(int id, Application application)
         {
             if (id != application.Id)
@@ -64,6 +68,7 @@ namespace Middleware.Controllers
 
         // DELETE: api/Application/1
         [HttpDelete]
+        [Route("api/somiod/Application/{id}")]
         public IHttpActionResult DeleteApplication(int id)
         {
             Application application = GetApplicationById(id);
@@ -76,6 +81,7 @@ namespace Middleware.Controllers
         }
 
         [HttpGet]
+        [Route("api/somiod/Application")]
         private void AddApplication(Application application)
         {
             try
@@ -115,7 +121,7 @@ namespace Middleware.Controllers
         }
 
 
-        private List<string> DiscoverApplications()
+        public List<string> DiscoverApplications()
         {
             try
             {
@@ -227,72 +233,6 @@ namespace Middleware.Controllers
             {
                 // Handle exceptions
                 Console.WriteLine($"Error deleting application: {ex.Message}");
-                throw;
-            }
-        }
-
-        [HttpGet]
-        [Route("api/somiod/discover")]
-        public IHttpActionResult DiscoverResources()
-        {
-            try
-            {
-                // Check if the somiod-discover header is present
-                var discoverHeader = Request.Headers.GetValues("somiod-discover");
-
-                if (discoverHeader != null && discoverHeader.Contains("application"))
-                {
-                    // Discover applications
-                    List<string> applicationNames = DiscoverApplications();
-                    return Ok(applicationNames);
-                }
-                else if (discoverHeader != null && discoverHeader.Contains("container"))
-                {
-                    // Discover containers
-                    List<string> containerNames = DiscoverContainers();
-                    return Ok(containerNames);
-                }
-                // Add similar logic for other resource types (data, subscription)
-
-                // Default case: Invalid or missing somiod-discover header
-                return BadRequest("Invalid or missing somiod-discover header.");
-            }
-            catch (Exception ex)
-            {
-                // Handle exceptions
-                Console.WriteLine($"Error discovering resources: {ex.Message}");
-                return InternalServerError();
-            }
-        }
-
-        //we need to replace this after we got the ContainersController
-        private List<string> DiscoverContainers()
-        {
-            try
-            {
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-
-                    // Your implementation to return a list of container names
-                    using (SqlCommand cmd = new SqlCommand("SELECT Name FROM Containers", connection))
-                    {
-                        using (SqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            List<string> containerNames = new List<string>();
-                            while (reader.Read())
-                            {
-                                containerNames.Add((string)reader["Name"]);
-                            }
-                            return containerNames;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Handle exceptions
-                Console.WriteLine($"Error discovering containers: {ex.Message}");
                 throw;
             }
         }
