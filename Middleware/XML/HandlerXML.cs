@@ -13,6 +13,23 @@ namespace Middleware.XML
     {
         public string XmlFilePath { get; set; }
 
+
+
+        #region XML Application handler
+        // funções para os applications
+
+        #endregion
+
+        #region XML Containers handler
+        // funções para os containers
+
+        #endregion
+
+        #region XML Data handler
+        // funções para os datas
+
+        #endregion
+
         #region XML Subscriptions handler
 
         public void DeleteSubscription(Subscription subscription)

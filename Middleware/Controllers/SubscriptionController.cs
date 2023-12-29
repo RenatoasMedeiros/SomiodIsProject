@@ -89,20 +89,20 @@ namespace Middleware.Controllers
                 conn = new SqlConnection(connectionString);
                 conn.Open();
 
-                // construir a query para procurar o AppName.
+                // construir a query para procurar o a aplicação.
                 SqlCommand cmdApp = new SqlCommand(sqlApplication, conn);
                 cmdApp.Parameters.AddWithValue("@AppName", appName);
 
-                // executar a query e guardar o AppId se for encontrado um appName igual ao desejado.
+                // executar a query e guardar o AppId se for encontrado uma aplicação igual ao desejado.
                 SqlDataReader readerApp = cmdApp.ExecuteReader();
                 while (readerApp.Read())
                 {
                     appId = (int)readerApp["Id"];
                 }
 
-                readerApp.Close();
+                readerApp.Close(); // para a procura
 
-                // Se o appId se mantiver em '-1', então não foi encontrada nenhuma appName.
+                // Se o appId se mantiver em '-1', então não foi encontrada nenhuma aplicação.
                 if (appId == -1)
                 {
                     conn.Close();
@@ -111,17 +111,20 @@ namespace Middleware.Controllers
                 }
 
                 // Fazer verificação do containerName recebido.
-                SqlCommand cmdMod = new SqlCommand(sqlContainer, conn);
-                cmdMod.Parameters.AddWithValue("@containerName", containerName);
-                cmdMod.Parameters.AddWithValue("@AppId", appId);
+                SqlCommand cmdContainer = new SqlCommand(sqlContainer, conn);
+                cmdContainer.Parameters.AddWithValue("@containerName", containerName);
+                cmdContainer.Parameters.AddWithValue("@AppId", appId);
 
-                SqlDataReader readerMod = cmdMod.ExecuteReader();
-                while (readerMod.Read())
+                // executa a query e procura ate encontrar um matching container.
+                SqlDataReader readerContainer = cmdContainer.ExecuteReader();
+                while (readerContainer.Read())
                 {
-                    containerId = (int)readerMod["Id"];
+                    containerId = (int)readerContainer["Id"];
                 }
 
-                readerMod.Close();
+                readerContainer.Close(); // para a procura
+
+                // msg de erro
                 if (containerId == -1)
                 {
                     conn.Close();
@@ -142,6 +145,8 @@ namespace Middleware.Controllers
             }
 
             // verificar se o XML do request é valido
+
+
             return null;
         }
 
