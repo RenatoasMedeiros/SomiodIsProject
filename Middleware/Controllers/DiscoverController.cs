@@ -17,8 +17,8 @@ namespace Middleware.Controllers
         ContainerController containerController = new ContainerController();
 
 
-        //[HttpGet]
-        //[Route("api/somiod/{application}")]
+        [HttpGet]
+        [Route("api/somiod/applications/{application}")]
         public IHttpActionResult DiscoverResources()
         {
             try

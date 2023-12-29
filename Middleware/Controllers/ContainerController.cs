@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Web.Http;
 using Middleware.Models;
+using Newtonsoft.Json.Linq;
 
 namespace Middleware.Controllers
 {
@@ -15,41 +16,78 @@ namespace Middleware.Controllers
         string connectionString = Properties.Settings.Default.ConnStr;
 
         // GET api/somiod/app
-        public IEnumerable<Container> GetAllContainers()
+        [HttpGet]
+        [Route("api/somiod/applications/{application}/containers")]
+        public IEnumerable<Container> GetAllContainers([FromUri] string application)
         {
-
+            var discoverHeader = Request.Headers.GetValues("somiod-discover");
             List<Container> containers = new List<Container>();
-            string sql = "SELECT * FROM Containers";
-            SqlConnection conn = null;
-            try
+
+            if (discoverHeader != null && discoverHeader.Contains("container"))
             {
-                conn = new SqlConnection(connectionString);
-                conn.Open();
-                SqlCommand cmd = new SqlCommand(sql, conn);
-                SqlDataReader reader = cmd.ExecuteReader();
-                while (reader.Read())
+                int parentId = -1;
+                string queryString = "SELECT Id FROM Applications WHERE name = @name";
+                using (SqlConnection connection = new SqlConnection(connectionString))
                 {
-                    Container c = new Container
+
+                    SqlCommand command = new SqlCommand(queryString, connection);
+                    command.Parameters.AddWithValue("@name", application);
+                    try
                     {
-                        Id = (int)reader["Id"],
-                        Name = (string)reader["Name"],
-                        Creation_dt = (DateTime)reader["Creation_dt"],
-                        Parent = (int)reader["Parent"]
-                    };
-                    containers.Add(c);
+                        command.Connection.Open();
+                        SqlDataReader reader = command.ExecuteReader();
+
+                        if (reader.HasRows)
+                        {
+                            while (reader.Read())
+                            {
+                                parentId = (int)reader["Id"];
+                            }
+                            reader.Close();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        return (IEnumerable<Container>)ex ;
+                    }
+
+                    queryString = "SELECT * FROM Containers WHERE parent = @Parent";
+                    
+
+                    command = new SqlCommand(queryString, connection);
+                    command.Parameters.AddWithValue("@Parent", parentId);
+
+                    try
+                    {
+                        SqlDataReader reader = command.ExecuteReader();
+                        while (reader.Read())
+                        {
+                        Container c = new Container
+                        {
+                            Id = (int)reader["Id"],
+                                Name = (string)reader["Name"],
+                                Creation_dt = (DateTime)reader["Creation_dt"],
+                                Parent = (int)reader["Parent"]
+                            };
+                            containers.Add(c);
+                            
+                        }
+                        reader.Close();
+                        connection.Close();
+                        return containers;
+                    }
+                    catch (Exception ex)
+                    {
+                        if (connection.State == System.Data.ConnectionState.Open)
+                        {
+                            connection.Close();
+                        }
+                        return containers;
+                    }
+
                 }
-                reader.Close();
-                conn.Close();
-                return containers;
             }
-            catch (Exception ex)
-            {
-                if (conn.State == System.Data.ConnectionState.Open)
-                {
-                    conn.Close();
-                }
-                return containers;
-            }
+            return containers;
         }
 
 
@@ -85,7 +123,7 @@ namespace Middleware.Controllers
         }
 
         // GET api/somiod/
-
+        
         public IHttpActionResult GetContainerById(int id)
         {
             Container container = null;
@@ -132,12 +170,17 @@ namespace Middleware.Controllers
             }
 
         }
+        
 
+        //Get apenas dos containers desta aplicação 
         [HttpGet]
-        [Route("api/somiod/{application}/{container}")]
-        public IHttpActionResult GetContainerByName(string name)
+        [Route("api/somiod/applications/{application}/containers/{container}")]
+        public IHttpActionResult GetContainerByName([FromUri] string application, [FromUri] string container)
         {
-            Container container = null;
+
+            //encontrar o parent para adicionar à query 
+
+            Container containerToFind = null;
             string sql = "SELECT * FROM Containers WHERE UPPER(Name) = UPPER(@Name)";
             SqlConnection conn = null;
 
@@ -147,30 +190,30 @@ namespace Middleware.Controllers
                 conn.Open();
 
                 SqlCommand cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@Name", name);
+                cmd.Parameters.AddWithValue("@Name", container);
                 SqlDataReader reader = cmd.ExecuteReader();
 
                 if (reader.HasRows)
                 {
                     while (reader.Read())
                     {
-                        container = new Container();
+                        containerToFind = new Container();
                         {
-                            container.Id = (int)reader["Id"];
-                            container.Name = (string)reader["Name"];
-                            container.Creation_dt = (DateTime)reader["Creation_dt"];
-                            container.Parent = (int)reader["Parent"];
+                            containerToFind.Id = (int)reader["Id"];
+                            containerToFind.Name = (string)reader["Name"];
+                            containerToFind.Creation_dt = (DateTime)reader["Creation_dt"];
+                            containerToFind.Parent = (int)reader["Parent"];
                         };
                     }
                 }
                 reader.Close();
                 conn.Close();
 
-                if (container == null)
+                if (containerToFind == null)
                 {
                     return NotFound();
                 }
-                return Ok(container);
+                return Ok(containerToFind);
             }
             catch (Exception)
             {
@@ -185,7 +228,7 @@ namespace Middleware.Controllers
 
         // POST Container
         [HttpPost]
-        [Route("api/somiod/{application}")]
+        [Route("api/somiod/applications/{application}/containers")]
         public IHttpActionResult PostContainer([FromBody] Container value, [FromUri] string application)
         {
             
@@ -202,7 +245,7 @@ namespace Middleware.Controllers
                 if (discoverHeader != null && discoverHeader.Contains("container"))
                 {
                     int parentId = -1;
-                    Debug.Print("[DEBUG] 'Container : " + value+ " ' | Post() in ContainerController");
+                    
                     string queryString = "SELECT Id FROM Applications WHERE name = @name";
                     using (SqlConnection connection = new SqlConnection(connectionString))
                     {
@@ -228,7 +271,7 @@ namespace Middleware.Controllers
                             return InternalServerError();
                         }
                     }
-                    Debug.Print("[DEBUG] 'Parent ID : " + parentId + " ' | Post() in ContainerController");
+                    
 
                     queryString = "INSERT INTO Containers (name, creation_dt, parent) VALUES (@Name, GETDATE() , @Parent)";
 
@@ -268,16 +311,6 @@ namespace Middleware.Controllers
             }
            
 
-        }
-
-        // PUT api/<controller>/5
-        public void Put(int id, [FromBody] string value)
-        {
-        }
-
-        // DELETE api/<controller>/5
-        public void Delete(int id)
-        {
         }
     }
 }
