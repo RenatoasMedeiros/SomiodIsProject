@@ -15,7 +15,8 @@ namespace Middleware.Controllers
 
 
         // GET: api/Application
-        [Route("api/somiod/Application")]
+        [HttpGet]
+        [Route("api/somiod")]
         public IHttpActionResult GetApplications()
         {
             List<string> applicationNames = DiscoverApplications();
@@ -23,7 +24,8 @@ namespace Middleware.Controllers
         }
 
         // GET: api/Application/1
-        [Route("api/somiod/Application/{id}")]
+        [HttpGet]
+        [Route("api/somiod/{id}")]
         public IHttpActionResult GetApplication(int id)
         {
             Application application = GetApplicationById(id);
@@ -36,7 +38,7 @@ namespace Middleware.Controllers
 
         // POST: api/Application
         [HttpPost]
-        [Route("api/somiod/Application")]
+        [Route("api/somiod")]
         public IHttpActionResult PostApplication(Application application)
         {
             if (ModelState.IsValid)
@@ -47,9 +49,10 @@ namespace Middleware.Controllers
             return BadRequest(ModelState);
         }
 
-        // PUT: api/Application/1
+        //we need to change this to name
+        // PUT: api/somiod/1
         [HttpPut]
-        [Route("api/somiod/Application/{id}")]
+        [Route("api/somiod/{id}")]
         public IHttpActionResult PutApplication(int id, Application application)
         {
             if (id != application.Id)
@@ -68,7 +71,7 @@ namespace Middleware.Controllers
 
         // DELETE: api/Application/1
         [HttpDelete]
-        [Route("api/somiod/Application/{id}")]
+        [Route("api/somiod/{id}")]
         public IHttpActionResult DeleteApplication(int id)
         {
             Application application = GetApplicationById(id);
@@ -80,8 +83,8 @@ namespace Middleware.Controllers
             return NotFound();
         }
 
-        [HttpGet]
-        [Route("api/somiod/Application")]
+        [HttpPost]
+        [Route("api/somiod")]
         private void AddApplication(Application application)
         {
             try
