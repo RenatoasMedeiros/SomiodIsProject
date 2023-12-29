@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -14,10 +15,9 @@ namespace Middleware.Controllers
         string connectionString = Properties.Settings.Default.ConnStr;
 
         // GET api/somiod/app
-        [HttpGet]
-        [Route("api/somiod/{application}")]
         public IEnumerable<Container> GetAllContainers()
         {
+
             List<Container> containers = new List<Container>();
             string sql = "SELECT * FROM Containers";
             SqlConnection conn = null;
@@ -52,8 +52,40 @@ namespace Middleware.Controllers
             }
         }
 
+
+        public List<string> DiscoverContainers()
+        {
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    // Your implementation to return a list of application names
+                    using (SqlCommand cmd = new SqlCommand("SELECT Name FROM Containers", connection))
+                    {
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            List<string> containersNames = new List<string>();
+                            while (reader.Read())
+                            {
+                                containersNames.Add((string)reader["Name"]);
+                            }
+                            return containersNames;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exceptions
+                Console.WriteLine($"Error discovering applications: {ex.Message}");
+                throw;
+            }
+        }
+
         // GET api/somiod/
-        
+
         public IHttpActionResult GetContainerById(int id)
         {
             Container container = null;
@@ -151,9 +183,91 @@ namespace Middleware.Controllers
             }
         }
 
-        // POST api/<controller>
-        public void Post([FromBody] string value)
+        // POST Container
+        [HttpPost]
+        [Route("api/somiod/{application}")]
+        public IHttpActionResult PostContainer([FromBody] Container value, [FromUri] string application)
         {
+            
+            if (value == null)
+            {
+                return BadRequest("Invalid data. The request body cannot be empty.");
+            }
+
+            try
+            {
+
+                var discoverHeader = Request.Headers.GetValues("somiod-discover");
+
+                if (discoverHeader != null && discoverHeader.Contains("container"))
+                {
+                    int parentId = -1;
+                    Debug.Print("[DEBUG] 'Container : " + value+ " ' | Post() in ContainerController");
+                    string queryString = "SELECT Id FROM Applications WHERE name = @name";
+                    using (SqlConnection connection = new SqlConnection(connectionString))
+                    {
+
+                        SqlCommand command = new SqlCommand(queryString, connection);
+                        command.Parameters.AddWithValue("@name", application);
+                        try
+                        {
+                            command.Connection.Open();
+                            SqlDataReader reader = command.ExecuteReader();
+
+                            if (reader.HasRows)
+                            {
+                                while (reader.Read())
+                                {
+                                    parentId = (int)reader["Id"];
+                                }
+                                reader.Close();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            return InternalServerError();
+                        }
+                    }
+                    Debug.Print("[DEBUG] 'Parent ID : " + parentId + " ' | Post() in ContainerController");
+
+                    queryString = "INSERT INTO Containers (name, creation_dt, parent) VALUES (@Name, GETDATE() , @Parent)";
+
+                    using (SqlConnection connection = new SqlConnection(connectionString))
+                    {
+
+                        //encontrar id da app do parent
+                        SqlCommand command = new SqlCommand(queryString, connection);
+                        command.Parameters.AddWithValue("@Name", value.Name);
+                        command.Parameters.AddWithValue("@Parent", parentId);
+
+                        try
+                        {
+                            command.Connection.Open();
+                            int rows = command.ExecuteNonQuery();
+                            Debug.Print("[DEBUG] 'Rows : " + rows + " ' | Post() in ContainerController");
+                            if (rows > 0)
+                                return Ok();
+                            else
+                                return NotFound();
+                        }
+                        catch (Exception ex)
+                        {
+                            return InternalServerError();
+                        }
+                    }
+
+                }
+
+                return BadRequest("Invalid or missing somiod-discover header.");
+            }
+            catch (Exception ex)
+            {
+                // Handle exceptions
+                Console.WriteLine($"Error discovering resources: {ex.Message}");
+                return InternalServerError();
+            }
+           
+
         }
 
         // PUT api/<controller>/5
