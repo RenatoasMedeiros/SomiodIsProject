@@ -56,16 +56,16 @@ namespace Middleware.Controllers
                         }
 
                         // Your implementation to add the application to the database
-                        using (SqlCommand cmd = new SqlCommand("INSERT INTO Applications (Name, Creation_dt) VALUES (@Name, @Creation_dt); SELECT SCOPE_IDENTITY();", connection))
+                        using (SqlCommand cmd = new SqlCommand("INSERT INTO Applications (Name, Creation_dt) VALUES (@Name, GETDATE()); SELECT SCOPE_IDENTITY();", connection))
                         {
                             cmd.Parameters.AddWithValue("@Name", application.Name);
-                            cmd.Parameters.AddWithValue("@Creation_dt", application.Creation_dt);
 
                             // ExecuteScalar returns the identity (Id) of the newly added record
                             application.Id = Convert.ToInt32(cmd.ExecuteScalar());
                         }
 
-                        return CreatedAtRoute("DefaultApi", new { id = application.Id }, application);
+                        return Ok(application);
+
                     }
                 }
 
