@@ -41,12 +41,42 @@ namespace Middleware.Controllers
         [Route("api/somiod")]
         public IHttpActionResult PostApplication(Application application)
         {
-            if (ModelState.IsValid)
+            try
             {
-                AddApplication(application);
-                return CreatedAtRoute("DefaultApi", new { id = application.Id }, application);
+                if (ModelState.IsValid)
+                {
+                    using (SqlConnection connection = new SqlConnection(connectionString))
+                    {
+                        connection.Open();
+
+                        // Check if the application has a name, generate a unique name if not provided
+                        if (string.IsNullOrWhiteSpace(application.Name))
+                        {
+                            application.Name = GenerateUniqueName();
+                        }
+
+                        // Your implementation to add the application to the database
+                        using (SqlCommand cmd = new SqlCommand("INSERT INTO Applications (Name, Creation_dt) VALUES (@Name, @Creation_dt); SELECT SCOPE_IDENTITY();", connection))
+                        {
+                            cmd.Parameters.AddWithValue("@Name", application.Name);
+                            cmd.Parameters.AddWithValue("@Creation_dt", application.Creation_dt);
+
+                            // ExecuteScalar returns the identity (Id) of the newly added record
+                            application.Id = Convert.ToInt32(cmd.ExecuteScalar());
+                        }
+
+                        return CreatedAtRoute("DefaultApi", new { id = application.Id }, application);
+                    }
+                }
+
+                return BadRequest(ModelState);
             }
-            return BadRequest(ModelState);
+            catch (Exception ex)
+            {
+                // Handle exceptions
+                Console.WriteLine($"Error adding application: {ex.Message}");
+                throw;
+            }
         }
 
         //we need to change this to name
@@ -82,41 +112,7 @@ namespace Middleware.Controllers
             }
             return NotFound();
         }
-
-        [HttpPost]
-        [Route("api/somiod")]
-        private void AddApplication(Application application)
-        {
-            try
-            {
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-
-                    // Check if the application has a name, generate a unique name if not provided
-                    if (string.IsNullOrWhiteSpace(application.Name))
-                    {
-                        application.Name = GenerateUniqueName();
-                    }
-
-                    // Your implementation to add the application to the database
-                    using (SqlCommand cmd = new SqlCommand("INSERT INTO Applications (Name, Creation_dt) VALUES (@Name, @Creation_dt); SELECT SCOPE_IDENTITY();", connection))
-                    {
-                        cmd.Parameters.AddWithValue("@Name", application.Name);
-                        cmd.Parameters.AddWithValue("@Creation_dt", application.Creation_dt);
-
-                        // ExecuteScalar returns the identity (Id) of the newly added record
-                        application.Id = Convert.ToInt32(cmd.ExecuteScalar());
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Handle exceptions
-                Console.WriteLine($"Error adding application: {ex.Message}");
-                throw;
-            }
-        }
+        
 
         private string GenerateUniqueName()
         {
