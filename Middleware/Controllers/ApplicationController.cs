@@ -25,10 +25,10 @@ namespace Middleware.Controllers
 
         // GET: api/Application/1
         [HttpGet]
-        [Route("api/somiod/applications/{id}")]
-        public IHttpActionResult GetApplication(int id)
+        [Route("api/somiod/applications/{name}")]
+        public IHttpActionResult GetApplication(string name)
         {
-            Application application = GetApplicationById(id);
+            Application application = GetApplicationByName(name);
             if (application != null)
             {
                 return Ok(application);
@@ -82,10 +82,10 @@ namespace Middleware.Controllers
         //we need to change this to name
         // PUT: api/somiod/1
         [HttpPut]
-        [Route("api/somiod/applications/{id}")]
-        public IHttpActionResult PutApplication(int id, Application application)
+        [Route("api/somiod/applications/{name}")]
+        public IHttpActionResult PutApplication(string name, Application application)
         {
-            if (id != application.Id)
+            if (name != application.Name)
             {
                 return BadRequest("Mismatched Ids");
             }
@@ -101,13 +101,13 @@ namespace Middleware.Controllers
 
         // DELETE: api/Application/1
         [HttpDelete]
-        [Route("api/somiod/applications/{id}")]
-        public IHttpActionResult DeleteApplication(int id)
+        [Route("api/somiod/applications/{name}")]
+        public IHttpActionResult DeleteApplication(string name)
         {
-            Application application = GetApplicationById(id);
+            Application application = GetApplicationByName(name);
             if (application != null)
             {
-                DeleteApplicationById(id);
+                GetApplicationByName(name);
                 return Ok(application);
             }
             return NotFound();
@@ -151,7 +151,7 @@ namespace Middleware.Controllers
             }
         }
 
-        private Application GetApplicationById(int id)
+        private Application GetApplicationByName(string name)
         {
             try
             {
@@ -160,18 +160,18 @@ namespace Middleware.Controllers
                     connection.Open();
 
                     // Your implementation to retrieve and return an application by ID
-                    using (SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE Id = @Id", connection))
+                    using (SqlCommand cmd = new SqlCommand("SELECT * FROM Applications WHERE Name = @Name", connection))
                     {
-                        cmd.Parameters.AddWithValue("@Id", id);
+                        cmd.Parameters.AddWithValue("@Name", name);
                         using (SqlDataReader reader = cmd.ExecuteReader())
                         {
                             if (reader.Read())
                             {
                                 return new Application
                                 {
-                                    Id = (int)reader["Id"],
+                                    //Id = (int)reader["Id"],
                                     Name = (string)reader["Name"],
-                                    Creation_dt = (DateTime)reader["Creation_dt"]
+                                    //Creation_dt = (DateTime)reader["Creation_dt"]
                                 };
                             }
                             return null; // Application not found
