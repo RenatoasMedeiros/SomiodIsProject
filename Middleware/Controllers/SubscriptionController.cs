@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
+using Middleware.XML;
 
 
 namespace Middleware.Controllers
@@ -144,6 +145,60 @@ namespace Middleware.Controllers
             return null;
         }
 
+
+        //Delete method
+        [Route("api/somiod/subscriptions/{id}")]
+        public IHttpActionResult Delete(int id)
+        {
+            HandlerXML handler = new HandlerXML();
+            string sqlGetSubscription = "SELECT * FROM Subscriptions WHERE Id = @Id";
+            string sql = "DELETE FROM Subscriptions WHERE Id = @Id";
+            Subscription subscription = new Subscription();
+
+            SqlConnection conn = null;
+
+            try
+            {
+                conn = new SqlConnection(connectionString);
+                conn.Open();
+
+                SqlCommand cmdGetSubscription = new SqlCommand(sqlGetSubscription, conn);
+                cmdGetSubscription.Parameters.AddWithValue("@Id", id);
+                SqlDataReader reader = cmdGetSubscription.ExecuteReader();
+                while (reader.Read())
+                {
+                    subscription.Id = (int)reader["Id"];
+                    subscription.Name = (string)reader["Name"];
+                    subscription.Parent = (int)reader["Parent"];
+                    subscription.Creation_dt = (DateTime)reader["Creation_dt"];
+                    subscription.Event = (string)reader["Event"];
+                    subscription.Endpoint = (string)reader["Endpoint"];
+                }
+                reader.Close();
+
+                SqlCommand cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@Id", id);
+
+                int numRows = cmd.ExecuteNonQuery();
+                conn.Close();
+
+                if (numRows > 0)
+                {
+                    handler.DeleteSubscription(subscription);
+                    return Content(HttpStatusCode.OK, "Subscription delete successfully", Configuration.Formatters.XmlFormatter);
+                }
+                return Content(HttpStatusCode.BadRequest, "Subscription does not exist", Configuration.Formatters.XmlFormatter);
+            }
+            catch (Exception e)
+            {
+                Debug.Print("[DEBUG] 'Exception in Delete() in SubscriptionController' | " + e.Message);
+                if (conn.State == System.Data.ConnectionState.Open)
+                {
+                    conn.Close();
+                }
+                return InternalServerError();
+            }
+        }
         #endregion
     }
 }
