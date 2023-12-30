@@ -22,7 +22,7 @@ namespace Middleware.Controllers
         // GET -H “content-type: application/xml” -H “somiod-discover: data” http://<domain:9876>/api/somiod/app1 ➔ returns all the data records(names) that are child from app1.
         [HttpGet]
         [Route("api/somiod/{application}/data")] // não é suposto ser data
-        public IEnumerable<Data> GetAllData(string application)
+        public IEnumerable<Data> GetAllData(string applicationName)
         {
             List<Data> data = new List<Data>();
             string sql = "SELECT d.* FROM Data d " +
@@ -31,12 +31,13 @@ namespace Middleware.Controllers
                  "WHERE a.name = @ApplicationName";
 
             SqlConnection conn = null;
+
             try
             {
                 conn = new SqlConnection(connectionString);
                 conn.Open();
                 SqlCommand cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@ApplicationName", application);
+                cmd.Parameters.AddWithValue("@ApplicationName", applicationName);
                 SqlDataReader reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
@@ -65,26 +66,60 @@ namespace Middleware.Controllers
         }
         #endregion
 
-        #region GET Data by Id
+        #region GET Data by Name
 
-        //[HttpGet]
-        //[Route("api/somiod/{application}/{container}/data/{id:int}")]
-        //public IEnumerable<Data> GetDatabyId(int id)
-        //{
-        //    List<Data> data = new List<Data>();
-        //    string sql = "SELECT * FROM Data Where Id = @id";
-        //    SqlConnection conn = null;
+        [HttpGet]
+        [Route("api/somiod/{application}/{container}/{dataName}/data")]
+        public Data GetDatabyName(string dataName)
+        {
+            Data data = new Data();
+            string sql = "SELECT * FROM Data WHERE name = @DataName";
 
+            SqlConnection conn = null;
 
-        //}
+            try
+            {
+                conn = new SqlConnection(connectionString);
+                conn.Open();
+                SqlCommand cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@DataName", dataName);
+                SqlDataReader reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+
+                    data.Id = (int)reader["id"];
+                    data.Name = (string)reader["name"];
+                    data.Content = (string)reader["content"];
+                    data.Creation_dt = (DateTime)reader["creation_dt"];
+                    data.Parent = (int)reader["parent"];
+                    
+                }
+                reader.Close();
+                conn.Close();
+
+                return data;
+
+            }
+            catch (Exception ex)
+            {
+                Debug.Print("[DEBUG] 'Exception in Get() in DataController' | " + ex.Message);
+
+                if (conn.State == System.Data.ConnectionState.Open)
+                {
+                    conn.Close();
+                }
+                return data;
+            }
+
+        }
 
         #endregion
 
         #region POST Data
 
         [HttpPost]
-        [Route("api/somiod/{application}/{container}")]
-        public IHttpActionResult Post(string application, string container, [FromBody] Data newData)
+        [Route("api/somiod/{application}/{container}/data")]
+        public IHttpActionResult Post(string containerName, [FromBody] Data newData)
         {
 
             if (newData == null)
@@ -94,7 +129,9 @@ namespace Middleware.Controllers
 
             int containerId = -1;
 
-            #region Descobrir contentId
+            Debug.Print("[DEBUG] 'Data: " + newData.Content + " ' | Post() in DataController");
+
+            #region Descobrir containerId
             string sql = "SELECT c.id FROM Containers c WHERE c.name = @container";
 
             SqlConnection conn = null;
@@ -104,7 +141,7 @@ namespace Middleware.Controllers
                 conn.Open();
                 SqlCommand cmd = new SqlCommand(sql, conn);
 
-                cmd.Parameters.AddWithValue("@container", container);
+                cmd.Parameters.AddWithValue("@container", containerName);
 
                 SqlDataReader reader = cmd.ExecuteReader();
                 if (reader.HasRows)
@@ -132,6 +169,15 @@ namespace Middleware.Controllers
             }
             #endregion
 
+            // SELECT subscription baseado no containerId
+
+                // erro se não houver subscriptions
+
+            // Para cada subscription existente faz um publish MQTT da data
+
+            // Ao fazer o POST, logo de seguida e verificar a resposta OK ou Unternal Server Error
+                
+
             sql = "INSERT INTO Data (name, content, creation_dt, parent) VALUES (@name, @content, GETDATE(), @parent)";
 
             try
@@ -144,16 +190,15 @@ namespace Middleware.Controllers
                 cmd.Parameters.AddWithValue("@content", newData.Content);
                 cmd.Parameters.AddWithValue("@parent", containerId);
 
-                int rows = cmd.ExecuteNonQuery();
+                int rowsAffected = cmd.ExecuteNonQuery();
                 conn.Close();
-                if (rows > 0)
+
+                if (rowsAffected > 0)
                 {
                     return Ok();
                 }
-                else
-                {
-                    return NotFound();
-                }
+
+                return InternalServerError();
             }
             catch (Exception ex)
             {
@@ -171,12 +216,48 @@ namespace Middleware.Controllers
 
         #region PUT Data
 
-        //public IHttpActionResult Put(int id, [FromBody] Data editedData)
-        //{
-            
+        [HttpPut]
+        [Route("api/somiod/{application}/{container}/data/{id}")]
+        public IHttpActionResult Put(int id, [FromBody] Data editedData)
+        {
 
-        //    string queryString = "UPDATE Data SET name=@name, content=@content, Price=@price WHERE Id=@id ";
-        //}
+            string sql = "UPDATE Data SET name = @Name, content = @Content WHERE id = @Id";
+
+            SqlConnection conn = null;
+
+            try
+            {
+                conn = new SqlConnection(connectionString);
+                conn.Open();
+                SqlCommand cmd = new SqlCommand(sql, conn);
+
+                cmd.Parameters.AddWithValue("@Id", id);
+                cmd.Parameters.AddWithValue("@Name", editedData.Name);
+                cmd.Parameters.AddWithValue("@Content", editedData.Content);
+
+                int rowsAffected = cmd.ExecuteNonQuery();
+                conn.Close();
+
+                if (rowsAffected > 0)
+                {
+                    return Ok();
+                }
+                else
+                {
+                    return NotFound();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.Print("[DEBUG] 'Exception in Put() in DataController' | " + ex.Message);
+
+                if (conn.State == System.Data.ConnectionState.Open)
+                {
+                    conn.Close();
+                }
+                return InternalServerError(); // Return Internal Server Error if an exception occurred
+            }
+        }
         #endregion
 
         #region DELETE Data
@@ -196,12 +277,12 @@ namespace Middleware.Controllers
                 SqlCommand cmd = new SqlCommand(sql, conn);
                 cmd.Parameters.AddWithValue("@Id", id);
 
-                int numRows = cmd.ExecuteNonQuery();
+                int rowsAffected = cmd.ExecuteNonQuery();
                 conn.Close();
 
-                if (numRows > 0)
+                if (rowsAffected > 0)
                 {
-                    return Content(HttpStatusCode.OK, "Data delete successfully", Configuration.Formatters.XmlFormatter);
+                    return Content(HttpStatusCode.OK, "Data deleted successfully", Configuration.Formatters.XmlFormatter);
                 }
                 return Content(HttpStatusCode.BadRequest, "Data does not exist", Configuration.Formatters.XmlFormatter);
             }
