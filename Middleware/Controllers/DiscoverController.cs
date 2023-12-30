@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Data.SqlClient;
 using System.Web.Http;
+using Middleware.Models;
 
 namespace Middleware.Controllers
 {
@@ -13,10 +14,11 @@ namespace Middleware.Controllers
         string connectionString = Properties.Settings.Default.ConnStr;
 
         ApplicationController applicationController = new ApplicationController();
+        ContainerController containerController = new ContainerController();
 
 
         [HttpGet]
-        [Route("api/somiod/discover")]
+        [Route("api/somiod/applications/{application}")]
         public IHttpActionResult DiscoverResources()
         {
             try
@@ -33,7 +35,7 @@ namespace Middleware.Controllers
                 else if (discoverHeader != null && discoverHeader.Contains("container"))
                 {
                     // Discover containers
-                    List<string> containerNames = DiscoverContainers();
+                    List<string> containerNames = containerController.DiscoverContainers();
                     return Ok(containerNames);
                 }
                 // Add similar logic for other resource types (data, subscription)
@@ -48,38 +50,5 @@ namespace Middleware.Controllers
                 return InternalServerError();
             }
         }
-
-        private List<string> DiscoverContainers()
-        {
-            try
-            {
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-
-                    // Your implementation to return a list of container names
-                    using (SqlCommand cmd = new SqlCommand("SELECT Name FROM Containers", connection))
-                    {
-                        using (SqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            List<string> containerNames = new List<string>();
-                            while (reader.Read())
-                            {
-                                containerNames.Add((string)reader["Name"]);
-                            }
-                            return containerNames;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Handle exceptions
-                Console.WriteLine($"Error discovering containers: {ex.Message}");
-                throw;
-            }
-        }
-
-        // Add similar methods for other resource types (application, data, subscription)
     }
 }
