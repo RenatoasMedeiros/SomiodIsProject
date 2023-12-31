@@ -1,5 +1,4 @@
-﻿
-CREATE TABLE [dbo].[Applications] (
+﻿CREATE TABLE [dbo].[Applications] (
     [Id]          INT IDENTITY(1,1)          NOT NULL,
     [name]        VARCHAR (50) NOT NULL UNIQUE,
     [creation_dt] DATETIME     NOT NULL,
@@ -32,7 +31,7 @@ CREATE TABLE [dbo].[Subscriptions] (
     [name]        VARCHAR (50) NOT NULL UNIQUE,
     [creation_dt] DATETIME     NOT NULL,
     [parent]      INT          NOT NULL,
-    [event]       INT           NOT NULL CHECK (event IN (1, 2)),
+    [event]       VARCHAR (50)          NOT NULL,
     [endpoint]    VARCHAR (50) NOT NULL,
     PRIMARY KEY CLUSTERED ([Id] ASC),
     CONSTRAINT [FK_Subscriptions_ToContainers] FOREIGN KEY ([parent]) REFERENCES [dbo].[Containers] ([Id])

@@ -11,8 +11,8 @@ namespace Middleware.Controllers
 {
     public class ApplicationController : ApiController
     {
+        // Update the connection string with your actual connection string
         string connectionString = Properties.Settings.Default.ConnStr;
-
 
         // GET: api/Application
         //[Route("api/somiod")]
