@@ -29,8 +29,8 @@ namespace Middleware.Controllers
                 if (discoverHeader != null && discoverHeader.Contains("application"))
                 {
                     // Discover applications
-                    List<string> applicationNames = applicationController.DiscoverApplications();
-                    return Ok(applicationNames);
+                    //List<string> applicationNames = applicationController.DiscoverApplications();
+                    return Ok();//(applicationNames);
                 }
                 else if (discoverHeader != null && discoverHeader.Contains("container"))
                 {

@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Web.Http;
 using Middleware.Models;
 using System.Data.SqlClient;
+using System.Diagnostics;
 
 namespace Middleware.Controllers
 {
@@ -15,15 +16,16 @@ namespace Middleware.Controllers
 
 
         // GET: api/Application
-        //[Route("api/somiod")]
+        [HttpGet]
+        [Route("api/somiod")]
         public IHttpActionResult GetApplications()
         {
-            List<string> applicationNames = DiscoverApplications();
-            return Ok(applicationNames);
+            //List<string> applicationNames = DiscoverApplications();
+            return Ok();//(applicationNames);
         }
 
         // GET: api/Application/1
-       /* [HttpGet]
+        /*[HttpGet]
         [Route("api/somiod/{application}")]
         public IHttpActionResult GetApplication(int id)
         {
@@ -33,11 +35,11 @@ namespace Middleware.Controllers
                 return Ok(application);
             }
             return NotFound();
-        }
-       */
+        }*/
+       
 
         // POST: api/Application
-        /*[HttpPost]
+        [HttpPost]
         [Route("api/somiod")]
         public IHttpActionResult PostApplication(Application application)
         {
@@ -47,11 +49,11 @@ namespace Middleware.Controllers
                 return CreatedAtRoute("DefaultApi", new { id = application.Id }, application);
             }
             return BadRequest(ModelState);
-        }*/
+        }
 
         // PUT: api/Application/1
-        //[HttpPut]
-        //[Route("api/somiod/{application}")]
+        [HttpPut]
+        [Route("api/somiod/{application}")]
         public IHttpActionResult PutApplication(int id, Application application)
         {
             if (id != application.Id)
@@ -69,21 +71,21 @@ namespace Middleware.Controllers
         }
 
         // DELETE: api/Application/1
-        //[HttpDelete]
-       // [Route("api/somiod/{application}")]
+        [HttpDelete]
+        [Route("api/somiod/{application}")]
         public IHttpActionResult DeleteApplication(int id)
         {
-            Application application = GetApplicationById(id);
-            if (application != null)
+           // Application application = GetApplicationById(id);
+            /*if (application != null)
             {
                 DeleteApplicationById(id);
                 return Ok(application);
-            }
+            }*/
             return NotFound();
         }
 
-        [HttpPost]
-        [Route("api/somiod")]
+        //[HttpPost]
+        //[Route("api/somiod")]
         private void AddApplication(Application application)
         {
             try
@@ -122,7 +124,7 @@ namespace Middleware.Controllers
             return "App_" + DateTime.Now.ToString("yyyyMMddHHmmssfff");
         }
 
-
+        /*
         public List<string> DiscoverApplications()
         {
             try
@@ -153,7 +155,7 @@ namespace Middleware.Controllers
                 throw;
             }
         }
-
+        
         private Application GetApplicationById(int id)
         {
             try
@@ -189,7 +191,7 @@ namespace Middleware.Controllers
                 throw;
             }
         }
-
+        */
         private void UpdateApplication(Application application)
         {
             try
@@ -239,5 +241,9 @@ namespace Middleware.Controllers
             }
         }
 
+       
+
     }
+
+    
 }

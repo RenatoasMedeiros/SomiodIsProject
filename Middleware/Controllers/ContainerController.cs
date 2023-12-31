@@ -7,7 +7,8 @@ using System.Net;
 using System.Net.Http;
 using System.Web.Http;
 using Middleware.Models;
-using Newtonsoft.Json.Linq;
+using Middleware.XML;
+
 
 namespace Middleware.Controllers
 {
@@ -19,6 +20,7 @@ namespace Middleware.Controllers
         [HttpGet]
         [Route("api/somiod/applications/{application}/containers")]
         public IEnumerable<Container> GetAllContainers([FromUri] string application)
+
         {
             var discoverHeader = Request.Headers.GetValues("somiod-discover");
             List<Container> containers = new List<Container>();
@@ -229,27 +231,27 @@ namespace Middleware.Controllers
         // POST Container
         [HttpPost]
         [Route("api/somiod/applications/{application}/containers")]
-        public IHttpActionResult PostContainer([FromBody] Container value, [FromUri] string application)
+        public IHttpActionResult PostContainer(HttpRequestMessage request, string application)
         {
-            
-            if (value == null)
+            //TODO - receber o container por xml
+
+            if (request.Content == null)
             {
                 return BadRequest("Invalid data. The request body cannot be empty.");
             }
 
             try
             {
-
                 var discoverHeader = Request.Headers.GetValues("somiod-discover");
 
                 if (discoverHeader != null && discoverHeader.Contains("container"))
                 {
+                    #region Verificar se parent existe
                     int parentId = -1;
-                    
                     string queryString = "SELECT Id FROM Applications WHERE name = @name";
+                    //verificar se parent existe
                     using (SqlConnection connection = new SqlConnection(connectionString))
                     {
-
                         SqlCommand command = new SqlCommand(queryString, connection);
                         command.Parameters.AddWithValue("@name", application);
                         try
@@ -265,22 +267,51 @@ namespace Middleware.Controllers
                                 }
                                 reader.Close();
                             }
+                           
+                            if(parentId == -1)
+                            {
+                                //parent n existe
+                                return NotFound();
+                            }
                         }
                         catch (Exception ex)
                         {
                             return InternalServerError();
                         }
                     }
-                    
+                    #endregion
 
+
+                    #region XML
+                    HandlerXML handler = new HandlerXML();
+
+                    string requestXML = request.Content.ReadAsStringAsync().Result
+                        .Replace(System.Environment.NewLine, String.Empty);
+
+
+                    if (!handler.IsValidXML(requestXML))
+                    {
+                        Debug.Print("[DEBUG] 'String is not XML' | Post() in ContainerController");
+                        return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
+                    }
+
+                    if (!handler.IsValidContainerSchema(requestXML))
+                    {
+                        Debug.Print("[DEBUG] 'Invalid Schema in XML' | Post() in ContainerController");
+                        return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
+                    }
+
+                    Container container = new Container();
+                    container.Name = handler.ContainerRequest();
+                    container.Parent = parentId;
+
+                    #endregion
                     queryString = "INSERT INTO Containers (name, creation_dt, parent) VALUES (@Name, GETDATE() , @Parent)";
 
                     using (SqlConnection connection = new SqlConnection(connectionString))
                     {
-
-                        //encontrar id da app do parent
                         SqlCommand command = new SqlCommand(queryString, connection);
-                        command.Parameters.AddWithValue("@Name", value.Name);
+                        command.Parameters.AddWithValue("@Name", container.Name);
                         command.Parameters.AddWithValue("@Parent", parentId);
 
                         try
@@ -309,8 +340,20 @@ namespace Middleware.Controllers
                 Console.WriteLine($"Error discovering resources: {ex.Message}");
                 return InternalServerError();
             }
-           
 
+
+        }
+
+
+
+        // PUT api/<controller>/5
+        public void Put(int id, [FromBody] string value)
+        {
+        }
+
+        // DELETE api/<controller>/5
+        public void Delete(int id)
+        {
         }
     }
 }
