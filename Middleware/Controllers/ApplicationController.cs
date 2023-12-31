@@ -6,6 +6,8 @@ using System.Net.Http;
 using System.Web.Http;
 using Middleware.Models;
 using System.Data.SqlClient;
+using Middleware.XML;
+using System.Diagnostics;
 
 namespace Middleware.Controllers
 {
@@ -36,67 +38,192 @@ namespace Middleware.Controllers
             return NotFound();
         }
 
-        // POST: api/Application
         [HttpPost]
-        [Route("api/somiod/applications")]
-        public IHttpActionResult PostApplication(Application application)
+        [Route("api/somiod")]
+        public IHttpActionResult PostApplication(HttpRequestMessage request)
         {
+            HandlerXML handler = new HandlerXML();
+
+            string teste = Request.Content.ToString();
+            //Retiro todos os caracteres e espaços desnecessários
+            string rawXml = request.Content.ReadAsStringAsync().Result
+                .Replace(System.Environment.NewLine, String.Empty);
+
+            //Verifico se a string que veio do request é XML
+            if (!handler.IsValidStringXML(rawXml))
+            {
+                Debug.Print("[DEBUG] 'String is not XML' | Post() in ApplicationController");
+                return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
+            }
+
+            //Verifica se o ficheiro XML está de acordo o XSD
+            if (!handler.IsValidApplicationSchemaXML(rawXml))
+            {
+                Debug.Print("[DEBUG] 'Invalid Schema in XML' | Post() in ApplicationController");
+                return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
+            }
+
+            //Começo o tratamento de dados
+            Application application = new Application();
+
+            application.Name = handler.DealRequestApplication();
+
+            if (String.IsNullOrEmpty(application.Name))
+            {
+                return Content(HttpStatusCode.BadRequest, "Name is Empty", Configuration.Formatters.XmlFormatter);
+            }
+
+            //Verifico se o nome da aplicação já existe
+            string sqlVerifyApplication = "SELECT COUNT(*) FROM Applications WHERE UPPER(Name) = UPPER(@Name)";
+            string sqlGetApplication = "SELECT * FROM Applications WHERE UPPER(Name) = UPPER(@Name)";
+            string sqlPostApplication = "INSERT INTO Applications (Name, Creation_dt) VALUES (@Name, @Creation_dt)";
+
+            SqlConnection conn = null;
+
             try
             {
-                if (ModelState.IsValid)
+                conn = new SqlConnection(connectionString);
+                conn.Open();
+
+                SqlCommand cmdExists = new SqlCommand(sqlVerifyApplication, conn);
+                cmdExists.Parameters.AddWithValue("@Name", application.Name);
+
+                if ((int)cmdExists.ExecuteScalar() > 0)
                 {
-                    using (SqlConnection connection = new SqlConnection(connectionString))
-                    {
-                        connection.Open();
-
-                        // Check if the application has a name, generate a unique name if not provided
-                        if (string.IsNullOrWhiteSpace(application.Name))
-                        {
-                            application.Name = GenerateUniqueName();
-                        }
-
-                        // Your implementation to add the application to the database
-                        using (SqlCommand cmd = new SqlCommand("INSERT INTO Applications (Name, Creation_dt) VALUES (@Name, GETDATE()); SELECT SCOPE_IDENTITY();", connection))
-                        {
-                            cmd.Parameters.AddWithValue("@Name", application.Name);
-
-                            // ExecuteScalar returns the identity (Id) of the newly added record
-                            application.Id = Convert.ToInt32(cmd.ExecuteScalar());
-                        }
-
-                        return Ok(application);
-
-                    }
+                    conn.Close();
+                    return Content(HttpStatusCode.BadRequest, "Application name already exists", Configuration.Formatters.XmlFormatter);
                 }
 
-                return BadRequest(ModelState);
+                SqlCommand cmdPost = new SqlCommand(sqlPostApplication, conn);
+                cmdPost.Parameters.AddWithValue("@Name", application.Name);
+                cmdPost.Parameters.AddWithValue("@Creation_dt", DateTime.Now);
+
+                int numRows = cmdPost.ExecuteNonQuery();
+
+                if (numRows > 0)
+                {
+                    //Vou fazer um select para ir buscar o id o creation_dt
+                    SqlCommand cmdGet = new SqlCommand(sqlGetApplication, conn);
+                    cmdGet.Parameters.AddWithValue("@Name", application.Name);
+
+                    SqlDataReader reader = cmdGet.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        application.Id = (int)reader["Id"];
+                        application.Name = (string)reader["Name"];
+                        application.Creation_dt = (DateTime)reader["Creation_dt"];
+                    }
+
+                    reader.Close();
+                    conn.Close();
+
+                    handler.AddApplication(application);
+                    return Content(HttpStatusCode.OK, "Application created successfully", Configuration.Formatters.XmlFormatter);
+                }
+                return InternalServerError();
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                // Handle exceptions
-                Console.WriteLine($"Error adding application: {ex.Message}");
-                throw;
+                Debug.Print("[DEBUG] 'Exception in Post() in ApplicationController' | " + e.Message);
+
+                if (conn.State == System.Data.ConnectionState.Open)
+                {
+                    conn.Close();
+                }
+                return InternalServerError();
             }
         }
 
-        //we need to change this to name
-        // PUT: api/somiod/1
-        [HttpPut]
-        [Route("api/somiod/applications/{name}")]
-        public IHttpActionResult PutApplication(string name, Application application)
+        //Put method
+        [Route("api/somiod/applications/{id}")]
+        public IHttpActionResult PutApplication(int id, HttpRequestMessage request)
         {
-            if (name != application.Name)
+
+            HandlerXML handler = new HandlerXML();
+
+            //Retiro todos os caracteres e espaços desnecessários
+            string rawXml = request.Content.ReadAsStringAsync().Result
+                .Replace(System.Environment.NewLine, String.Empty);
+
+            //Verifico se a string que veio do request é XML
+            if (!handler.IsValidStringXML(rawXml))
             {
-                return BadRequest("Mismatched Ids");
+                Debug.Print("[DEBUG] 'String is not XML' | Put() in ApplicationController");
+                return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
             }
 
-            if (ModelState.IsValid)
+            //Verifica se o ficheiro XML está de acordo o XSD
+            if (!handler.IsValidApplicationSchemaXML(rawXml))
             {
-                UpdateApplication(application);
-                return Ok(application);
+                Debug.Print("[DEBUG] 'Invalid Schema in XML' | Put() in ApplicationController");
+                return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
             }
 
-            return BadRequest(ModelState);
+            //Começo o tratamento de dados
+            Application application = new Application();
+
+            application.Name = handler.DealRequestApplication();
+
+            if (String.IsNullOrEmpty(application.Name))
+            {
+                return Content(HttpStatusCode.BadRequest, "Name is Empty", Configuration.Formatters.XmlFormatter);
+            }
+
+            //Verifico se o nome da aplicação já existe
+            string sqlVerifyApplication = "SELECT COUNT(*) FROM Applications WHERE UPPER(Name) = UPPER(@Name)";
+            string sqlGetApplication = "SELECT * FROM Applications WHERE UPPER(Name) = UPPER(@Name)";
+            string sql = "UPDATE Applications SET Name = @Name WHERE Id = @Id";
+
+            SqlConnection conn = null;
+
+            try
+            {
+                conn = new SqlConnection(connectionString);
+                conn.Open();
+                SqlCommand cmdExists = new SqlCommand(sqlVerifyApplication, conn);
+                cmdExists.Parameters.AddWithValue("@Name", application.Name);
+
+                if ((int)cmdExists.ExecuteScalar() > 0)
+                {
+                    conn.Close();
+                    return Content(HttpStatusCode.BadRequest, "Application name already exists", Configuration.Formatters.XmlFormatter);
+                }
+
+                SqlCommand cmdPut = new SqlCommand(sql, conn);
+                cmdPut.Parameters.AddWithValue("@Name", application.Name);
+                cmdPut.Parameters.AddWithValue("@Id", id);
+                int numRows = cmdPut.ExecuteNonQuery();
+
+                if (numRows > 0)
+                {
+                    //Vou fazer um select para ir buscar o id o creation_dt
+                    SqlCommand cmdGet = new SqlCommand(sqlGetApplication, conn);
+                    cmdGet.Parameters.AddWithValue("@Name", application.Name);
+
+                    SqlDataReader reader = cmdGet.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        application.Id = (int)reader["Id"];
+                        application.Name = (string)reader["Name"];
+                        application.Creation_dt = (DateTime)reader["Creation_dt"];
+                    }
+                    reader.Close();
+                    conn.Close();
+
+                    handler.UpdateApplication(application);
+                    return Content(HttpStatusCode.OK, "Application update successfully", Configuration.Formatters.XmlFormatter);
+                }
+                return Content(HttpStatusCode.BadRequest, "Application does not exist", Configuration.Formatters.XmlFormatter);
+            }
+            catch (Exception e)
+            {
+                Debug.Print("[DEBUG] 'Exception in Put() in ApplicationController' | " + e.Message);
+                if (conn.State == System.Data.ConnectionState.Open)
+                {
+                    conn.Close();
+                }
+                return InternalServerError();
+            }
         }
 
         // DELETE: api/Application/1
@@ -235,6 +362,5 @@ namespace Middleware.Controllers
                 throw;
             }
         }
-
     }
 }
