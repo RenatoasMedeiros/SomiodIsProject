@@ -1,11 +1,11 @@
 using System.Web.Http;
 using WebActivatorEx;
-using Middleware;
+using SomiodIsProject;
 using Swashbuckle.Application;
 
 [assembly: PreApplicationStartMethod(typeof(SwaggerConfig), "Register")]
 
-namespace Middleware
+namespace SomiodIsProject
 {
     public class SwaggerConfig
     {
