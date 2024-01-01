@@ -164,7 +164,7 @@ namespace Middleware.XML
             try
             {
                 doc.Load(file);
-                ValidationEventHandler eventHandler = new ValidationEventHandler(MyValidateMethod);
+                ValidationEventHandler eventHandler = new ValidationEventHandler(EventErrorValidation);
                 doc.Schemas.Add(null, XsdFilePath);
                 doc.Validate(eventHandler);
             }
@@ -176,7 +176,7 @@ namespace Middleware.XML
             return isValid;
         }
 
-        private void MyValidateMethod(object sender, ValidationEventArgs args)
+        private void EventErrorValidation(object sender, ValidationEventArgs args)
         {
             isValid = false;
             switch (args.Severity)
@@ -193,16 +193,16 @@ namespace Middleware.XML
         }
         #endregion
 
-        #region Validate XML String Request
+        #region XML Handler
 
-        public bool IsValidStringXML(string xmlStr)
+        public bool IsValidXML(string input)
         {
             try
             {
-                if (!string.IsNullOrEmpty(xmlStr))
+                if (!string.IsNullOrEmpty(input))
                 {
                     System.Xml.XmlDocument xmlDoc = new System.Xml.XmlDocument();
-                    xmlDoc.LoadXml(xmlStr);
+                    xmlDoc.LoadXml(input);
                     return true;
                 }
                 else
@@ -215,8 +215,6 @@ namespace Middleware.XML
                 return false;
             }
         }
-        #endregion
-
         public void RefreshTempFile()
         {
             XmlDocument docTemp = new XmlDocument();
@@ -231,5 +229,7 @@ namespace Middleware.XML
 
             docTemp.Save(XmlFileTempPath);
         }
+        #endregion
+
     }
 }

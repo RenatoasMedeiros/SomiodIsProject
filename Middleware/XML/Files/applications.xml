@@ -5,4 +5,9 @@
     <creation_dt>12/31/2023 12:44:58 AM</creation_dt>
     <name>LAMPARINA</name>
   </application>
+  <application>
+    <id>5</id>
+    <creation_dt>12/31/2023 2:33:57 PM</creation_dt>
+    <name>LampadaXPTO12</name>
+  </application>
 </applications>
