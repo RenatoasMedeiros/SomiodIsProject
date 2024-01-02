@@ -10,6 +10,8 @@ using static System.Net.Mime.MediaTypeNames;
 using Middleware.Models;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
+using Middleware.XML;
+using Swashbuckle.Swagger;
 
 namespace Middleware.Controllers
 {
@@ -119,29 +121,53 @@ namespace Middleware.Controllers
 
         [HttpPost]
         [Route("api/somiod/{application}/{container}/data")]
-        public IHttpActionResult Post(string containerName, [FromBody] Data newData)
+        public IHttpActionResult Post(string application, string container, HttpRequestMessage requestNewData)
         {
 
-            if (newData == null)
+            #region Verificar XML
+
+            HandlerXML handler = new HandlerXML();
+
+            string requestXML = requestNewData.Content.ReadAsStringAsync().Result
+                .Replace(System.Environment.NewLine, String.Empty);
+            Debug.Print(requestXML);
+
+            if (requestXML == null)
             {
-                return BadRequest("Invalid data. The request body cannot be empty.");
+                Debug.Print("newData:" + requestNewData.Content.ReadAsStringAsync().Result + " is null");
+                return BadRequest("Invalid new data. The request body cannot be empty!");
+
             }
+
+            if (!handler.IsValidXML(requestXML))
+            {
+                Debug.Print("[DEBUG] 'String is not XML' | Post() in ContainerController");
+                return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
+            }
+
+            if (!handler.ValidateDataSchemaXML(requestXML))
+            {
+                Debug.Print("[DEBUG] 'Invalid Schema in XML' | Post() in ContainerController");
+                return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
+            }
+
+            #endregion
+
+            Data newData = handler.DataRequest();
 
             int containerId = -1;
 
-            Debug.Print("[DEBUG] 'Data: " + newData.Content + " ' | Post() in DataController");
-
             #region Descobrir containerId
-            string sql = "SELECT c.id FROM Containers c WHERE c.name = @container";
+            string sqlSelectContainerId = "SELECT c.id FROM Containers c WHERE c.name = @container";
 
             SqlConnection conn = null;
             try
             {
                 conn = new SqlConnection(connectionString);
                 conn.Open();
-                SqlCommand cmd = new SqlCommand(sql, conn);
+                SqlCommand cmd = new SqlCommand(sqlSelectContainerId, conn);
 
-                cmd.Parameters.AddWithValue("@container", containerName);
+                cmd.Parameters.AddWithValue("@container", container);
 
                 SqlDataReader reader = cmd.ExecuteReader();
                 if (reader.HasRows)
@@ -154,8 +180,9 @@ namespace Middleware.Controllers
                 }
                 conn.Close();
 
-                if (containerId == 0)
+                if (containerId == -1)
                     return NotFound();
+
             }
             catch (Exception ex)
             {
@@ -169,32 +196,57 @@ namespace Middleware.Controllers
             }
             #endregion
 
+            newData.Parent = containerId;
+
+            //newData.Parent = containerId;
+
+            // Para fazer o MQTT:
+
             // SELECT subscription baseado no containerId
 
-                // erro se não houver subscriptions
+            // erro se não houver subscriptions
 
             // Para cada subscription existente faz um publish MQTT da data
 
             // Ao fazer o POST, logo de seguida e verificar a resposta OK ou Unternal Server Error
-                
 
-            sql = "INSERT INTO Data (name, content, creation_dt, parent) VALUES (@name, @content, GETDATE(), @parent)";
+
+            string sqlInsert = "INSERT INTO Data (name, content, creation_dt, parent) VALUES (@name, @content, GETDATE(), @parent)";
+            string sqlSelect = "SELECT * FROM Data WHERE Parent = @parent AND UPPER(name) = UPPER(@name)";
 
             try
             {
                 conn = new SqlConnection(connectionString);
                 conn.Open();
-                SqlCommand cmd = new SqlCommand(sql, conn);
+                SqlCommand cmd = new SqlCommand(sqlInsert, conn);
 
                 cmd.Parameters.AddWithValue("@name", newData.Name);
                 cmd.Parameters.AddWithValue("@content", newData.Content);
-                cmd.Parameters.AddWithValue("@parent", containerId);
+                cmd.Parameters.AddWithValue("@parent", newData.Parent);
 
                 int rowsAffected = cmd.ExecuteNonQuery();
                 conn.Close();
 
                 if (rowsAffected > 0)
                 {
+                    conn.Open();
+                    SqlCommand cmdGetData = new SqlCommand(sqlSelect, conn);
+                    cmdGetData.Parameters.AddWithValue("@parent", newData.Parent);
+                    cmdGetData.Parameters.AddWithValue("@name", newData.Name);
+
+                    SqlDataReader reader = cmdGetData.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        newData.Id = (int)reader["Id"];
+                        newData.Creation_dt = (DateTime)reader["Creation_dt"];
+                    }
+
+                    reader.Close();
+                    conn.Close();
+
+                    //Adicionar a data ao XML
+                    handler.AddData(newData);
+                    
                     return Ok();
                 }
 
