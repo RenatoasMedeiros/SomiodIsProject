@@ -50,7 +50,7 @@ namespace Middleware.Controllers
                 .Replace(System.Environment.NewLine, String.Empty);
 
             //Verifico se a string que veio do request é XML
-            if (!handler.IsValidStringXML(rawXml))
+            if (!handler.IsValidXML(rawXml))
             {
                 Debug.Print("[DEBUG] 'String is not XML' | Post() in ApplicationController");
                 return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
@@ -146,7 +146,7 @@ namespace Middleware.Controllers
                 .Replace(System.Environment.NewLine, String.Empty);
 
             //Verifico se a string que veio do request é XML
-            if (!handler.IsValidStringXML(rawXml))
+            if (!handler.IsValidXML(rawXml))
             {
                 Debug.Print("[DEBUG] 'String is not XML' | Put() in ApplicationController");
                 return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);

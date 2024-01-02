@@ -1,8 +1,35 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <applications>
   <application>
-    <id>4</id>
-    <creation_dt>12/31/2023 12:44:58 AM</creation_dt>
-    <name>LAMPARINA</name>
-  </application>
+		<id>1</id>
+		<name>testapp</name>
+		<creation_dt>20/12/2023 00:00:00</creation_dt>
+		<containers>
+			<container>
+				<id>1</id>
+				<name>testContainer</name>
+				<creation_dt>20/12/2023 00:00:00</creation_dt>
+				<parent>1</parent>
+				<datas>
+					<data>
+						<id>1</id>
+						<name>testData</name>
+						<content>data content</content>
+						<creation_dt>20/12/2023 00:00:00</creation_dt>
+						<parent>1</parent>
+					</data>
+				</datas>
+				<subscriptions>
+					<subscription>
+						<id>2</id>
+						<name>testSub</name>
+						<creation_dt>20/12/2023 00:00:00</creation_dt>
+						<parent>1</parent>
+						<event>1</event>
+						<endpoint>127.0.0.1</endpoint>
+					</subscription>
+				</subscriptions>
+			</container>
+		</containers>
+	</application>
 </applications>

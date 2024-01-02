@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <applications>
-	<application>
+  <application>
 		<id>1</id>
 		<name>testapp</name>
 		<creation_dt>20/12/2023 00:00:00</creation_dt>

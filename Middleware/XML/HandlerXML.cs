@@ -9,11 +9,14 @@ using Middleware.Models;
 using System.Diagnostics;
 using System.Web.Hosting;
 
+
 namespace Middleware.XML
 {
     public class HandlerXML
     {
         private bool isValid = true;
+
+        private string validationMessage;
         public string XmlFileTempPath { get; set; }
         public string XmlFilePath { get; set; }
         public string XsdFilePathApplications { get; set; }
@@ -22,130 +25,19 @@ namespace Middleware.XML
         public string XsdFileSubscriptions { get; set; }
         public string XsdFilePathSomiod { get; set; }
 
-        public bool IsValidXML(string input)
+        public HandlerXML()
         {
-            // verifica primeiro se a string não vem vazia.
-            if (string.IsNullOrEmpty(input))
-            {
-                return false;
-            }
-
-            try
-            {
-                XmlDocument document = new XmlDocument();
-                document.LoadXml(input);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                return false;
-            }
-        }
-
+            XmlFileTempPath = HostingEnvironment.MapPath("~/XML/Files/temp.xml");
 
             XmlFilePath = HostingEnvironment.MapPath("~/XML/Files/applications.xml");
-            XmlFileTempPath = HostingEnvironment.MapPath("~/XML/Files/temp.xml");
-            XsdFilePathApplications = HostingEnvironment.MapPath("~/XML/Schema/application.xsd");
 
+            XsdFilePathApplications = HostingEnvironment.MapPath("~/XML/Schemas/application.xsd");
         }
 
 
-        #region XML Subscriptions handler
-
-        // Faz tratamento dos dados do request retorna uma nova subscription 
-        public Subscription SubscriptionRequest()
-        {
-            XmlDocument doc = new XmlDocument();
-            Subscription subscription = new Subscription();
-            doc.Load(XmlFileTempPath);
-
-            XmlNode node = doc.SelectSingleNode("//somiod/subscription");
-            if (node.SelectSingleNode("name") != null)
-            {
-                subscription.Name = node.SelectSingleNode("name").InnerText;
-            }
-
-            if (node.SelectSingleNode("event") != null)
-            {
-                subscription.Event = node.SelectSingleNode("event").InnerText;
-            }
-
-            if (node.SelectSingleNode("endpoint") != null)
-            {
-                subscription.Endpoint = node.SelectSingleNode("endpoint").InnerText;
-            }
-
-            RefreshTempFile();
-            return subscription;
-        }
-
-        public void AddSubscription(Subscription subscription)
-        {
-            XmlDocument doc = new XmlDocument();
-            doc.Load(XmlFilePath);
-            XmlNode nodeSubscriptions = doc.SelectSingleNode("//applications/application/containers/container[id='" + subscription.Parent + "']/subscriptions");
-
-            //Inserir tag <containers>
-            if (nodeSubscriptions == null)
-            {
-                nodeSubscriptions = doc.CreateElement("subscriptions");
-                doc.SelectSingleNode("//applications/application/containers/container[id='" + subscription.Parent + "']").AppendChild(nodeSubscriptions);
-            }
-
-            //Inserir tag <container>
-            XmlNode xmlSubscription = doc.CreateElement("subscription");
-
-            XmlNode nodeAux = doc.CreateElement("id");
-            nodeAux.InnerText = subscription.Id.ToString();
-            xmlSubscription.AppendChild(nodeAux);
-
-            nodeAux = doc.CreateElement("creation_dt");
-            nodeAux.InnerText = subscription.Creation_dt.ToString();
-            xmlSubscription.AppendChild(nodeAux);
-
-            nodeAux = doc.CreateElement("name");
-            nodeAux.InnerText = subscription.Name;
-            xmlSubscription.AppendChild(nodeAux);
-
-            nodeAux = doc.CreateElement("parent");
-            nodeAux.InnerText = subscription.Parent.ToString();
-            xmlSubscription.AppendChild(nodeAux);
-
-            nodeAux = doc.CreateElement("event");
-            nodeAux.InnerText = subscription.Event.ToString();
-            xmlSubscription.AppendChild(nodeAux);
-
-            nodeAux = doc.CreateElement("endpoint");
-            nodeAux.InnerText = subscription.Endpoint.ToString();
-            xmlSubscription.AppendChild(nodeAux);
-
-            doc.SelectSingleNode("//applications/application/containers/container[id='" + subscription.Parent + "']/subscriptions").AppendChild(xmlSubscription);
-
-            doc.Save(XmlFilePath);
-        }
-
-        public void DeleteSubscription(Subscription subscription)
-        {
-
-            XmlDocument doc = new XmlDocument();
-            doc.Load(XmlFilePath);
-            XmlNode subs = doc.SelectSingleNode("//containers[id ='" + subscription.Parent + "']/subscriptions");
-            int numSubs = subs.ChildNodes.Count;
-            XmlNode node = doc.SelectSingleNode("//subscriptions[id ='" + subscription.Id + "']");
-            node.ParentNode.RemoveChild(node);
-            if (numSubs == 1)
-            {
-                subs.ParentNode.RemoveChild(subs);
-            }
-            doc.Save(XmlFilePath);
-
-            Debug.Print("[DEBUG] 'Subscriptions delete with success' | DeleteSubscription() in HandlerXML");
-        }
-
-        #endregion
 
         #region XML Application handler
-
+        // funções para os applications
         public bool IsValidApplicationSchemaXML(string rawXml)
         {
             XmlDocument docTemp = new XmlDocument();
@@ -246,9 +138,137 @@ namespace Middleware.XML
                 Debug.Print("[DEBUG] 'Application not found' | DeleteApplication() in HandlerXML");
             }
         }
+
+
         #endregion
 
-        #region Validate XML with XML Schema (xsd)
+        #region XML Containers handler
+        // funções para os containers
+
+        #endregion
+
+        #region XML Data handler
+        // funções para os datas
+
+        #endregion
+
+        #region XML Subscriptions handler
+
+        // Faz tratamento dos dados do request retorna uma nova subscription 
+        public Subscription SubscriptionRequest()
+        {
+            XmlDocument doc = new XmlDocument();
+            Subscription subscription = new Subscription();
+            doc.Load(XmlFileTempPath);
+
+            XmlNode node = doc.SelectSingleNode("//somiod/subscription");
+            if (node.SelectSingleNode("name") != null)
+            {
+                subscription.Name = node.SelectSingleNode("name").InnerText;
+            }
+
+            if (node.SelectSingleNode("event") != null)
+            {
+                subscription.Event = node.SelectSingleNode("event").InnerText;
+            }
+
+            if (node.SelectSingleNode("endpoint") != null)
+            {
+                subscription.Endpoint = node.SelectSingleNode("endpoint").InnerText;
+            }
+
+            RefreshTempFile();
+            return subscription;
+        }
+
+        public bool IsValidSubscriptionsSchemaXML(string rawXml)
+        {
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+            XmlNode node = docTemp.SelectSingleNode("//somiod");
+
+            node.InnerXml += rawXml;
+
+            docTemp.Save(XmlFileTempPath);
+
+            // If valid Schema in XML 
+            if (ValidateXML(XmlFileTempPath, XsdFileSubscriptions))
+            {
+                return true;
+            }
+
+            Debug.Print("[DEBUG] 'Invalid Schema in XML' | IsValidSubscriptionsSchemaXML() in HandlerXML");
+            RefreshTempFile();
+            return false;
+        }
+
+
+        public void AddSubscription(Subscription subscription)
+        {
+            XmlDocument doc = new XmlDocument();
+            doc.Load(XmlFilePath);
+            XmlNode nodeSubscriptions = doc.SelectSingleNode("//applications/application/containers/container[id='" + subscription.Parent + "']/subscriptions");
+
+            //Inserir tag <containers>
+            if (nodeSubscriptions == null)
+            {
+                nodeSubscriptions = doc.CreateElement("subscriptions");
+                doc.SelectSingleNode("//applications/application/containers/container[id='" + subscription.Parent + "']").AppendChild(nodeSubscriptions);
+            }
+
+            //Inserir tag <container>
+            XmlNode xmlSubscription = doc.CreateElement("subscription");
+
+            XmlNode nodeAux = doc.CreateElement("id");
+            nodeAux.InnerText = subscription.Id.ToString();
+            xmlSubscription.AppendChild(nodeAux);
+
+            nodeAux = doc.CreateElement("creation_dt");
+            nodeAux.InnerText = subscription.Creation_dt.ToString();
+            xmlSubscription.AppendChild(nodeAux);
+
+            nodeAux = doc.CreateElement("name");
+            nodeAux.InnerText = subscription.Name;
+            xmlSubscription.AppendChild(nodeAux);
+
+            nodeAux = doc.CreateElement("parent");
+            nodeAux.InnerText = subscription.Parent.ToString();
+            xmlSubscription.AppendChild(nodeAux);
+
+            nodeAux = doc.CreateElement("event");
+            nodeAux.InnerText = subscription.Event.ToString();
+            xmlSubscription.AppendChild(nodeAux);
+
+            nodeAux = doc.CreateElement("endpoint");
+            nodeAux.InnerText = subscription.Endpoint.ToString();
+            xmlSubscription.AppendChild(nodeAux);
+
+            doc.SelectSingleNode("//applications/application/containers/container[id='" + subscription.Parent + "']/subscriptions").AppendChild(xmlSubscription);
+
+            doc.Save(XmlFilePath);
+        }
+
+        public void DeleteSubscription(Subscription subscription)
+        {
+
+            XmlDocument doc = new XmlDocument();
+            doc.Load(XmlFilePath);
+            XmlNode subs = doc.SelectSingleNode("//containers[id ='" + subscription.Parent + "']/subscriptions");
+            int numSubs = subs.ChildNodes.Count;
+            XmlNode node = doc.SelectSingleNode("//subscriptions[id ='" + subscription.Id + "']");
+            node.ParentNode.RemoveChild(node);
+            if (numSubs == 1)
+            {
+                subs.ParentNode.RemoveChild(subs);
+            }
+            doc.Save(XmlFilePath);
+
+            Debug.Print("[DEBUG] 'Subscriptions delete with success' | DeleteSubscription() in HandlerXML");
+        }
+
+        #endregion
+
+        #region Compare XML with XML Schema (xsd)
 
         public bool ValidateXML(string file, string XsdFilePath)
         {
@@ -257,7 +277,7 @@ namespace Middleware.XML
             try
             {
                 doc.Load(file);
-                ValidationEventHandler eventHandler = new ValidationEventHandler(MyValidateMethod);
+                ValidationEventHandler eventHandler = new ValidationEventHandler(EventErrorValidation);
                 doc.Schemas.Add(null, XsdFilePath);
                 doc.Validate(eventHandler);
             }
@@ -269,7 +289,8 @@ namespace Middleware.XML
             return isValid;
         }
 
-        private void MyValidateMethod(object sender, ValidationEventArgs args)
+        // 
+        private void EventErrorValidation(object sender, ValidationEventArgs args)
         {
             isValid = false;
             switch (args.Severity)
@@ -286,29 +307,27 @@ namespace Middleware.XML
         }
         #endregion
 
-        #region Validate XML String Request
+        #region XML handler
 
-        public bool IsValidStringXML(string xmlStr)
+        public bool IsValidXML(string input)
         {
+            // verifica primeiro se a string não vem vazia.
+            if (string.IsNullOrEmpty(input))
+            {
+                return false;
+            }
+
             try
             {
-                if (!string.IsNullOrEmpty(xmlStr))
-                {
-                    System.Xml.XmlDocument xmlDoc = new System.Xml.XmlDocument();
-                    xmlDoc.LoadXml(xmlStr);
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
+                XmlDocument document = new XmlDocument();
+                document.LoadXml(input);
+                return true;
             }
-            catch (System.Xml.XmlException)
+            catch (Exception ex)
             {
                 return false;
             }
         }
-        #endregion
 
         public void RefreshTempFile()
         {
@@ -322,8 +341,9 @@ namespace Middleware.XML
                 node.RemoveChild(node.FirstChild);
             }
 
-            doc.Save(XmlFileTempPath);
+            docTemp.Save(XmlFileTempPath);
         }
+
         #endregion
 
     }

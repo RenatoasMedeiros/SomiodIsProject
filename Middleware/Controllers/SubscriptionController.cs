@@ -78,7 +78,7 @@ namespace Middleware.Controllers
             string sqlApplication = "SELECT Id FROM Applications WHERE UPPER(Name) = UPPER(@AppName)";
             string sqlContainer = "SELECT Id, Name FROM Containers WHERE UPPER(Name) = UPPER(@ContainerName) and Parent = @AppId";
 
-            // init dos Ids.
+            // init dos Ids. (vai dar erro se permanecerem: -1)
             int appId = -1, containerId = -1;
             SqlConnection conn = null;
 
@@ -96,10 +96,10 @@ namespace Middleware.Controllers
                 SqlDataReader readerApp = cmdApp.ExecuteReader();
                 while (readerApp.Read())
                 {
-                    appId = (int)readerApp["Id"];
+                    appId = (int)readerApp["Id"]; // O Id vem do SELECT da query.
                 }
 
-                readerApp.Close(); // para a procura
+                readerApp.Close(); // Termina a procura
 
                 // Se o appId se mantiver em '-1', então não foi encontrada nenhuma aplicação.
                 if (appId == -1)
@@ -109,7 +109,7 @@ namespace Middleware.Controllers
                     return Content(HttpStatusCode.BadRequest, "Application does not exist", Configuration.Formatters.XmlFormatter);
                 }
 
-                // Fazer verificação do containerName recebido.
+                // Após a verificação da aplicação, fazer verificação do container desta aplicação.
                 SqlCommand cmdContainer = new SqlCommand(sqlContainer, conn);
                 cmdContainer.Parameters.AddWithValue("@containerName", containerName);
                 cmdContainer.Parameters.AddWithValue("@AppId", appId);
@@ -123,7 +123,7 @@ namespace Middleware.Controllers
 
                 readerContainer.Close(); // para a procura
 
-                // msg de erro
+                // msg de erro do container
                 if (containerId == -1)
                 {
                     conn.Close();
@@ -146,7 +146,7 @@ namespace Middleware.Controllers
             // verificar se o XML do request é valido.
             HandlerXML handler = new HandlerXML();
 
-            // serializar a string do request
+            // serializar a string do request e remover os espaços vazios.
             string rawXml = request.Content.ReadAsStringAsync().Result.Replace(System.Environment.NewLine, String.Empty);
             
             // verificar se o XML do request é valido.
@@ -157,8 +157,14 @@ namespace Middleware.Controllers
             }
 
 
-            // TODO:Verificar se o xml está de acordo com o schema.
+            // Verificar se o xml está de acordo com o schema.
+            if (!handler.IsValidSubscriptionsSchemaXML(rawXml))
+            {
+                // TODO: verificação do isValidDataSchemaXMl... 
 
+                Debug.Print("[DEBUG] 'Invalid Schema in XML' | Post() in SubscriptionController");
+                return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
+            }
 
 
             // Criação da nova subscription após as verificações XML serem feitas
