@@ -159,7 +159,7 @@ namespace Middleware.XML
             if(resType.InnerText != "container")
                 return false;
 
-            docTemp.RemoveChild(resType);
+            docTemp.LastChild.FirstChild.RemoveChild(resType);
 
             docTemp.Save(XmlFileTempPath);
 
