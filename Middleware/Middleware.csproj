@@ -161,6 +161,7 @@
       <SubType>Designer</SubType>
     </None>
     <None Include="XML\Schema\somiod.xsd">
+    <None Include="XML\Schema\containers.xsd">
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>

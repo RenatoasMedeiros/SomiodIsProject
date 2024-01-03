@@ -18,17 +18,20 @@ namespace Middleware.Controllers
 
         // GET: api/Application
         [HttpGet]
-        [Route("api/somiod/applications")]
+        [Route("api/somiod")]
         public IHttpActionResult GetApplications()
         {
-            List<string> applicationNames = DiscoverApplications();
-            return Ok(applicationNames);
+            //List<string> applicationNames = DiscoverApplications();
+            return Ok();//(applicationNames);
         }
 
         // GET: api/Application/1
         [HttpGet]
         [Route("api/somiod/applications/{name}")]
         public IHttpActionResult GetApplication(string name)
+        /*[HttpGet]
+        [Route("api/somiod/{application}")]
+        public IHttpActionResult GetApplication(int id)
         {
             Application application = GetApplicationByName(name);
             if (application != null)
@@ -41,6 +44,58 @@ namespace Middleware.Controllers
         [HttpPost]
         [Route("api/somiod")]
         public IHttpActionResult PostApplication(HttpRequestMessage request)
+        }*/
+       
+
+        // POST: api/Application
+        [HttpPost]
+        [Route("api/somiod")]
+        public IHttpActionResult PostApplication(Application application)
+        {
+            if (ModelState.IsValid)
+            {
+                AddApplication(application);
+                return CreatedAtRoute("DefaultApi", new { id = application.Id }, application);
+            }
+            return BadRequest(ModelState);
+        }
+
+        // PUT: api/Application/1
+        [HttpPut]
+        [Route("api/somiod/{application}")]
+        public IHttpActionResult PutApplication(int id, Application application)
+        {
+            if (id != application.Id)
+            {
+                return BadRequest("Mismatched Ids");
+            }
+
+            if (ModelState.IsValid)
+            {
+                UpdateApplication(application);
+                return Ok(application);
+            }
+
+            return BadRequest(ModelState);
+        }
+
+        // DELETE: api/Application/1
+        [HttpDelete]
+        [Route("api/somiod/{application}")]
+        public IHttpActionResult DeleteApplication(int id)
+        {
+           // Application application = GetApplicationById(id);
+            /*if (application != null)
+            {
+                DeleteApplicationById(id);
+                return Ok(application);
+            }*/
+            return NotFound();
+        }
+
+        //[HttpPost]
+        //[Route("api/somiod")]
+        private void AddApplication(Application application)
         {
             HandlerXML handler = new HandlerXML();
 
@@ -246,7 +301,7 @@ namespace Middleware.Controllers
             return "App_" + DateTime.Now.ToString("yyyyMMddHHmmssfff");
         }
 
-
+        /*
         public List<string> DiscoverApplications()
         {
             try
@@ -277,8 +332,8 @@ namespace Middleware.Controllers
                 throw;
             }
         }
-
-        private Application GetApplicationByName(string name)
+        
+        private Application GetApplicationById(int id)
         {
             try
             {
@@ -313,7 +368,7 @@ namespace Middleware.Controllers
                 throw;
             }
         }
-
+        */
         private void UpdateApplication(Application application)
         {
             try
@@ -363,4 +418,6 @@ namespace Middleware.Controllers
             }
         }
     }
+
+    
 }

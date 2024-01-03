@@ -29,14 +29,13 @@ namespace Middleware.Controllers
                 if (discoverHeader != null && discoverHeader.Contains("application"))
                 {
                     // Discover applications
-                    List<string> applicationNames = applicationController.DiscoverApplications();
-                    return Ok(applicationNames);
+                    //List<string> applicationNames = applicationController.DiscoverApplications();
+                    return Ok();//(applicationNames);
                 }
                 else if (discoverHeader != null && discoverHeader.Contains("container"))
                 {
                     // Discover containers
-                    List<string> containerNames = containerController.DiscoverContainers();
-                    return Ok(containerNames);
+                    return Ok(containerController.DiscoverContainers());
                 }
                 // Add similar logic for other resource types (data, subscription)
 

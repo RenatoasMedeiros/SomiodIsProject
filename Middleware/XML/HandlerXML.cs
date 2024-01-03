@@ -214,6 +214,86 @@ namespace Middleware.XML
 
         //    Debug.Print("[DEBUG] 'Data deleted with success' | DeleteData() in HandlerXML");
         //}
+        public string ContainerRequest()
+        {
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+
+            string container = docTemp.SelectSingleNode("//somiod/container/name").InnerText;
+
+            RefreshTempFile();
+
+            return container;
+        }
+
+
+        public void AddContainer(Container container)
+        {
+            XmlDocument file = new XmlDocument();
+            file.Load(XmlFilePath);
+
+            XmlNode xmlContainer = file.CreateElement("container");
+
+            XmlNode nodeAux = file.CreateElement("id");
+            nodeAux.InnerText = container.Id.ToString();
+            xmlContainer.AppendChild(nodeAux);
+
+            nodeAux = file.CreateElement("creation_dt");
+            nodeAux.InnerText = container.Creation_dt.ToString();
+            xmlContainer.AppendChild(nodeAux);
+
+            nodeAux = file.CreateElement("name");
+            nodeAux.InnerText = container.Name;
+            xmlContainer.AppendChild(nodeAux);
+
+            nodeAux = file.CreateElement("parent");
+            nodeAux.InnerText = container.Parent.ToString();
+            xmlContainer.AppendChild(nodeAux);
+
+            file.SelectSingleNode("//applications/application[id='" + container.Parent + "']").AppendChild(xmlContainer);
+
+            file.Save(XmlFilePath);
+        }
+
+        public void UpdateContainer(Container container)
+        {
+
+            XmlDocument file = new XmlDocument();
+            file.Load(XmlFilePath);
+
+            XmlNode node = file.SelectSingleNode("//applications/application[id ='" + container.Parent + "']/container[id ='" + container.Id + "']");
+            node.SelectSingleNode("name").InnerText = container.Name;
+            file.Save(XmlFilePath);
+        }
+
+
+        public void DeleteContainer(Container container)
+        {
+
+            XmlDocument file = new XmlDocument();
+            file.Load(XmlFilePath);
+
+            // Obter No Pai
+            XmlNode parentNode = file.SelectSingleNode("//applications/application[id ='" + container.Parent + "']/");
+            int numMod = parentNode.ChildNodes.Count;
+            // Obter No a eliminar
+            XmlNode node = file.SelectSingleNode("//container[id ='" + container.Id + "']");
+
+            // Eliminar node
+            node.ParentNode.RemoveChild(node);//testar esta condição , se calhar guardar o valor antigo e comparar 
+            if (numMod == 1)
+            {
+                parentNode.ParentNode.RemoveChild(parentNode);
+            }
+
+            file.Save(XmlFilePath);
+
+        }
+
+        #endregion
+
+        #region XML Data handler
+        // funções para os datas
 
         #endregion
 
@@ -227,7 +307,6 @@ namespace Middleware.XML
             doc.Load(XmlFileTempPath);
 
             XmlNode node = doc.SelectSingleNode("//somiod/subscription");
-
             if (node.SelectSingleNode("name") != null)
             {
                 subscription.Name = node.SelectSingleNode("name").InnerText;
