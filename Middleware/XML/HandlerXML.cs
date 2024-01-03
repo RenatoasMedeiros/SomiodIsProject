@@ -28,7 +28,7 @@ namespace Middleware.XML
         {
             XmlFileTempPath = HostingEnvironment.MapPath("~/XML/Files/temp.xml");
 
-            XmlFilePathApplications = HostingEnvironment.MapPath("~/XML/Files/applications.xml");
+            XmlFilePath = HostingEnvironment.MapPath("~/XML/Files/applications.xml");
 
             XmlFilePathContainers = HostingEnvironment.MapPath("~/XML/Files/containers.xml");
 
@@ -119,13 +119,11 @@ namespace Middleware.XML
 
             docTemp.Save(XmlFileTempPath);
 
-            // If valid Schema in XML 
             if (ValidateXML(XmlFileTempPath, XsdFilePathContainers))
             {
                 return true;
             }
 
-            Debug.Print("[DEBUG] 'Invalid Schema in XML' | IsValidApplicationsSchemaXML() in HandlerXML");
             RefreshTempFile();
             return false;
         }
@@ -137,91 +135,74 @@ namespace Middleware.XML
 
             string container = docTemp.SelectSingleNode("//somiod/container/name").InnerText;
 
-            Debug.Print("[DEBUG] 'Container name: " + container + "' | ContainerRequest() in HandlerXML");
             RefreshTempFile();
 
             return container;
         }
 
-/*
-        // --> Terceiro a ser chamado na application
-        public void AddModule(Module module)
+
+        public void AddContainer(Container container)
         {
-            XmlDocument docDefinitive = new XmlDocument();
-            docDefinitive.Load(XmlFilePath);
-            XmlNode nodeApplication = docDefinitive.SelectSingleNode("//applications/application[id='" + module.Parent + "']/modules");
+            XmlDocument file= new XmlDocument();
+            file.Load(XmlFilePath);
 
-            //Inserir tag <modules>
-            if (nodeApplication == null)
-            {
-                nodeApplication = docDefinitive.CreateElement("modules");
-                docDefinitive.SelectSingleNode("//applications/application[id='" + module.Parent + "']").AppendChild(nodeApplication);
-            }
+            XmlNode xmlContainer = file.CreateElement("container");
 
-            //Inserir tag <module>
-            XmlNode xmlModule = docDefinitive.CreateElement("module");
+            XmlNode nodeAux = file.CreateElement("id");
+            nodeAux.InnerText = container.Id.ToString();
+            xmlContainer.AppendChild(nodeAux);
 
-            XmlNode nodeAux = docDefinitive.CreateElement("id");
-            nodeAux.InnerText = module.Id.ToString();
-            xmlModule.AppendChild(nodeAux);
+            nodeAux = file.CreateElement("creation_dt");
+            nodeAux.InnerText = container.Creation_dt.ToString();
+            xmlContainer.AppendChild(nodeAux);
 
-            nodeAux = docDefinitive.CreateElement("creation_dt");
-            nodeAux.InnerText = module.Creation_dt.ToString();
-            xmlModule.AppendChild(nodeAux);
+            nodeAux = file.CreateElement("name");
+            nodeAux.InnerText = container.Name;
+            xmlContainer.AppendChild(nodeAux);
 
-            nodeAux = docDefinitive.CreateElement("name");
-            nodeAux.InnerText = module.Name;
-            xmlModule.AppendChild(nodeAux);
+            nodeAux = file.CreateElement("parent");
+            nodeAux.InnerText = container.Parent.ToString();
+            xmlContainer.AppendChild(nodeAux);
 
-            nodeAux = docDefinitive.CreateElement("parent");
-            nodeAux.InnerText = module.Parent.ToString();
-            xmlModule.AppendChild(nodeAux);
+            file.SelectSingleNode("//applications/application[id='" + container.Parent + "']").AppendChild(xmlContainer);
 
-            docDefinitive.SelectSingleNode("//applications/application[id='" + module.Parent + "']/modules").AppendChild(xmlModule);
-
-            docDefinitive.Save(XmlFilePath);
+            file.Save(XmlFilePath);
         }
-
-        public void UpdateModule(Module module)
+        
+        public void UpdateContainer(Container container)
         {
 
-            XmlDocument docDefinitive = new XmlDocument();
-            docDefinitive.Load(XmlFilePath);
+            XmlDocument file = new XmlDocument();
+            file.Load(XmlFilePath);
 
-            XmlNode node = docDefinitive.SelectSingleNode("//application[id ='" + module.Parent + "']/modules/module[id ='" + module.Id + "']");
-
-            node.SelectSingleNode("name").InnerText = module.Name;
-
-            docDefinitive.Save(XmlFilePath);
-            Debug.Print("[DEBUG] 'Module update with success' | UpdateModule() in HandlerXML");
-
+            XmlNode node = file.SelectSingleNode("//applications/application[id ='" + container.Parent + "']/container[id ='" + container.Id + "']");
+            node.SelectSingleNode("name").InnerText = container.Name;
+            file.Save(XmlFilePath);
         }
-
-        public void DeleteModule(Module module)
+        
+        
+        public void DeleteContainer(Container container)
         {
 
-            XmlDocument docDefinitive = new XmlDocument();
-            docDefinitive.Load(XmlFilePath);
+            XmlDocument file = new XmlDocument();
+            file.Load(XmlFilePath);
 
             // Obter No Pai
-            XmlNode nodeDad = docDefinitive.SelectSingleNode("//application[id ='" + module.Parent + "']/modules");
-            int numMod = nodeDad.ChildNodes.Count;
+            XmlNode parentNode = file.SelectSingleNode("//applications/application[id ='" + container.Parent + "']/");
+            int numMod = parentNode.ChildNodes.Count;
             // Obter No a eliminar
-            XmlNode node = docDefinitive.SelectSingleNode("//module[id ='" + module.Id + "']");
+            XmlNode node = file.SelectSingleNode("//container[id ='" + container.Id + "']");
 
             // Eliminar node
-            node.ParentNode.RemoveChild(node);
+            node.ParentNode.RemoveChild(node);//testar esta condição , se calhar guardar o valor antigo e comparar 
             if (numMod == 1)
             {
-                nodeDad.ParentNode.RemoveChild(nodeDad);
+                parentNode.ParentNode.RemoveChild(parentNode);
             }
 
-            docDefinitive.Save(XmlFilePath);
-            Debug.Print("[DEBUG] 'Module delete with success' | DeleteModule() in HandlerXML");
+            file.Save(XmlFilePath);
 
         }
-*/
-
 
         #endregion
 

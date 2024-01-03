@@ -35,8 +35,7 @@ namespace Middleware.Controllers
                 else if (discoverHeader != null && discoverHeader.Contains("container"))
                 {
                     // Discover containers
-                    List<string> containerNames = containerController.DiscoverContainers();
-                    return Ok(containerNames);
+                    return Ok(containerController.DiscoverContainers());
                 }
                 // Add similar logic for other resource types (data, subscription)
 

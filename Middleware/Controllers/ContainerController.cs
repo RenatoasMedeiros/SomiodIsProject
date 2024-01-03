@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Web.Http;
 using Middleware.Models;
 using Middleware.XML;
+using static System.Net.Mime.MediaTypeNames;
 
 
 namespace Middleware.Controllers
@@ -22,76 +23,81 @@ namespace Middleware.Controllers
         public IEnumerable<Container> GetAllContainers([FromUri] string application)
 
         {
-            var discoverHeader = Request.Headers.GetValues("somiod-discover");
+
             List<Container> containers = new List<Container>();
+            #region Verificar Header
+            var discoverHeader = Request.Headers.GetValues("somiod-discover");
 
-            if (discoverHeader != null && discoverHeader.Contains("container"))
+            if (discoverHeader == null || !discoverHeader.Contains("container"))
             {
-                int parentId = -1;
-                string queryString = "SELECT Id FROM Applications WHERE name = @name";
-                using (SqlConnection connection = new SqlConnection(connectionString))
+                return containers;
+            }
+            #endregion
+
+            
+            int parentId = -1;
+            string queryString = "SELECT Id FROM Applications WHERE name = @name";
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+
+                SqlCommand command = new SqlCommand(queryString, connection);
+                command.Parameters.AddWithValue("@name", application);
+                try
                 {
+                    command.Connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
 
-                    SqlCommand command = new SqlCommand(queryString, connection);
-                    command.Parameters.AddWithValue("@name", application);
-                    try
+                    if (reader.HasRows)
                     {
-                        command.Connection.Open();
-                        SqlDataReader reader = command.ExecuteReader();
-
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                parentId = (int)reader["Id"];
-                            }
-                            reader.Close();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        return (IEnumerable<Container>)ex ;
-                    }
-
-                    queryString = "SELECT * FROM Containers WHERE parent = @Parent";
-                    
-
-                    command = new SqlCommand(queryString, connection);
-                    command.Parameters.AddWithValue("@Parent", parentId);
-
-                    try
-                    {
-                        SqlDataReader reader = command.ExecuteReader();
                         while (reader.Read())
                         {
+                            parentId = (int)reader["Id"];
+                        }
+                        reader.Close();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return (IEnumerable<Container>)ex;
+                }
+
+                queryString = "SELECT * FROM Containers WHERE parent = @Parent";
+
+
+                command = new SqlCommand(queryString, connection);
+                command.Parameters.AddWithValue("@Parent", parentId);
+
+                try
+                {
+                    SqlDataReader reader = command.ExecuteReader();
+                    while (reader.Read())
+                    {
                         Container c = new Container
                         {
                             Id = (int)reader["Id"],
-                                Name = (string)reader["Name"],
-                                Creation_dt = (DateTime)reader["Creation_dt"],
-                                Parent = (int)reader["Parent"]
-                            };
-                            containers.Add(c);
-                            
-                        }
-                        reader.Close();
-                        connection.Close();
-                        return containers;
-                    }
-                    catch (Exception ex)
-                    {
-                        if (connection.State == System.Data.ConnectionState.Open)
-                        {
-                            connection.Close();
-                        }
-                        return containers;
-                    }
+                            Name = (string)reader["Name"],
+                            Creation_dt = (DateTime)reader["Creation_dt"],
+                            Parent = (int)reader["Parent"]
+                        };
+                        containers.Add(c);
 
+                    }
+                    reader.Close();
+                    connection.Close();
+                    return containers;
+                }
+                catch (Exception ex)
+                {
+                    if (connection.State == System.Data.ConnectionState.Open)
+                    {
+                        connection.Close();
+                    }
+                    return containers;
                 }
             }
-            return containers;
-        }
 
+        }
+    
 
         public List<string> DiscoverContainers()
         {
@@ -123,56 +129,6 @@ namespace Middleware.Controllers
                 throw;
             }
         }
-
-        // GET api/somiod/
-        
-        public IHttpActionResult GetContainerById(int id)
-        {
-            Container container = null;
-            string sql = "SELECT * FROM Containers WHERE Id = @Id";
-            SqlConnection conn = null;
-
-            try
-            {
-                conn = new SqlConnection(connectionString);
-                conn.Open();
-
-                SqlCommand cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@Id", id);
-                SqlDataReader reader = cmd.ExecuteReader();
-
-                while (reader.Read())
-                {
-                    container = new Container();
-                    {
-                        container.Id = (int)reader["Id"];
-                        container.Name = (string)reader["Name"];
-                        container.Creation_dt = (DateTime)reader["Creation_dt"];
-                        container.Parent = (int)reader["Parent"];
-                    };
-                }
-
-                reader.Close();
-                conn.Close();
-
-                if (container == null)
-                {
-                    return NotFound();
-                }
-                return Ok(container);
-            }
-            catch (Exception)
-            {
-                //fechar a ligação à BD
-                if (conn.State == System.Data.ConnectionState.Open)
-                {
-                    conn.Close();
-                }
-                return NotFound();
-            }
-
-        }
-        
 
         //Get apenas dos containers desta aplicação 
         [HttpGet]
@@ -233,8 +189,6 @@ namespace Middleware.Controllers
         [Route("api/somiod/applications/{application}/containers")]
         public IHttpActionResult PostContainer(HttpRequestMessage request, string application)
         {
-            //TODO - receber o container por xml
-
             if (request.Content == null)
             {
                 return BadRequest("Invalid data. The request body cannot be empty.");
@@ -242,97 +196,123 @@ namespace Middleware.Controllers
 
             try
             {
+                #region Verificar Header
                 var discoverHeader = Request.Headers.GetValues("somiod-discover");
 
-                if (discoverHeader != null && discoverHeader.Contains("container"))
+                if (discoverHeader == null || !discoverHeader.Contains("container"))
                 {
-                    #region Verificar se parent existe
-                    int parentId = -1;
-                    string queryString = "SELECT Id FROM Applications WHERE name = @name";
-                    //verificar se parent existe
-                    using (SqlConnection connection = new SqlConnection(connectionString))
-                    {
-                        SqlCommand command = new SqlCommand(queryString, connection);
-                        command.Parameters.AddWithValue("@name", application);
-                        try
-                        {
-                            command.Connection.Open();
-                            SqlDataReader reader = command.ExecuteReader();
+                    return BadRequest("Invalid or missing somiod-discover header.");
+                }
+                #endregion
 
-                            if (reader.HasRows)
+                #region Verificar se parent existe
+                int parentId = -1;
+                string queryString = "SELECT Id FROM Applications WHERE name = @name";
+                //verificar se parent existe
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    SqlCommand command = new SqlCommand(queryString, connection);
+                    command.Parameters.AddWithValue("@name", application);
+                    try
+                    {
+                        command.Connection.Open();
+                        SqlDataReader reader = command.ExecuteReader();
+
+                        if (reader.HasRows)
+                        {
+                            while (reader.Read())
                             {
-                                while (reader.Read())
-                                {
-                                    parentId = (int)reader["Id"];
-                                }
-                                reader.Close();
+                                parentId = (int)reader["Id"];
                             }
-                           
-                            if(parentId == -1)
-                            {
-                                //parent n existe
-                                return NotFound();
-                            }
+                            reader.Close();
                         }
-                        catch (Exception ex)
+
+                        if (parentId == -1)
                         {
-                            return InternalServerError();
+                            //parent n existe
+                            return NotFound();
                         }
                     }
-                    #endregion
-
-
-                    #region XML
-                    HandlerXML handler = new HandlerXML();
-
-                    string requestXML = request.Content.ReadAsStringAsync().Result
-                        .Replace(System.Environment.NewLine, String.Empty);
-
-
-                    if (!handler.IsValidXML(requestXML))
+                    catch (Exception ex)
                     {
-                        Debug.Print("[DEBUG] 'String is not XML' | Post() in ContainerController");
-                        return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
+                        return InternalServerError();
                     }
+                }
+                #endregion
 
-                    if (!handler.IsValidContainerSchema(requestXML))
-                    {
-                        Debug.Print("[DEBUG] 'Invalid Schema in XML' | Post() in ContainerController");
-                        return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
-                    }
+                #region Verificar XML Recebido 
+                HandlerXML handler = new HandlerXML();
 
-                    Container container = new Container();
-                    container.Name = handler.ContainerRequest();
-                    container.Parent = parentId;
+                string requestXML = request.Content.ReadAsStringAsync().Result
+                    .Replace(System.Environment.NewLine, String.Empty);
 
-                    #endregion
-                    queryString = "INSERT INTO Containers (name, creation_dt, parent) VALUES (@Name, GETDATE() , @Parent)";
 
-                    using (SqlConnection connection = new SqlConnection(connectionString))
-                    {
-                        SqlCommand command = new SqlCommand(queryString, connection);
-                        command.Parameters.AddWithValue("@Name", container.Name);
-                        command.Parameters.AddWithValue("@Parent", parentId);
-
-                        try
-                        {
-                            command.Connection.Open();
-                            int rows = command.ExecuteNonQuery();
-                            Debug.Print("[DEBUG] 'Rows : " + rows + " ' | Post() in ContainerController");
-                            if (rows > 0)
-                                return Ok();
-                            else
-                                return NotFound();
-                        }
-                        catch (Exception ex)
-                        {
-                            return InternalServerError();
-                        }
-                    }
-
+                if (!handler.IsValidXML(requestXML))
+                {
+                    return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
                 }
 
-                return BadRequest("Invalid or missing somiod-discover header.");
+                if (!handler.IsValidContainerSchema(requestXML))
+                {
+                    return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
+                }
+
+                Container container = new Container
+                {
+                    Name = handler.ContainerRequest(),
+                    Parent = parentId,
+                    Creation_dt = DateTime.Now
+                };
+                #endregion
+
+                #region Guardar Dados
+                queryString = "INSERT INTO Containers (name, creation_dt, parent) VALUES (@Name, @Creation_dt , @Parent)";
+
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    SqlCommand command = new SqlCommand(queryString, connection);
+                    command.Parameters.AddWithValue("@Name", container.Name);
+                    command.Parameters.AddWithValue("@Parent", container.Parent);
+                    command.Parameters.AddWithValue("@Creation_dt", container.Creation_dt);
+
+                    try
+                    {
+                        command.Connection.Open();
+                        int rows = command.ExecuteNonQuery();
+
+                        if (rows < 0)
+                            return InternalServerError();
+
+                        queryString = "SELECT Id FROM Containers WHERE name = @Name AND parent = @Parent";
+
+                        command = new SqlCommand(queryString, connection);
+                        command.Parameters.AddWithValue("@Name", container.Name);
+                        command.Parameters.AddWithValue("@Parent", container.Parent);
+
+                        SqlDataReader reader = command.ExecuteReader();
+
+                        if (reader.HasRows)
+                        {
+                            while (reader.Read())
+                            {
+                                container.Id = (int)reader["Id"];
+                            }
+                            handler.AddContainer(container);
+                            reader.Close();
+                        }
+                        connection.Close();
+
+                        return Content(HttpStatusCode.OK, "Container created successfully", Configuration.Formatters.XmlFormatter);
+                        #endregion
+
+                    }
+                    catch (Exception ex)
+                    {
+                        //ver se é preciso estes try catch todos ou entao fazer returns mais especificos
+                        return InternalServerError();
+                    }
+                }
+
             }
             catch (Exception ex)
             {
@@ -344,16 +324,282 @@ namespace Middleware.Controllers
 
         }
 
-
-
-        // PUT api/<controller>/5
-        public void Put(int id, [FromBody] string value)
+        // PUT Container Alterar rotas
+        [HttpPut]
+        [Route("api/somiod/applications/{application}/containers/{container}")]
+        public IHttpActionResult Put(HttpRequestMessage request, string container)
         {
+            if (request.Content == null)
+            {
+                return BadRequest("Invalid data. The request body cannot be empty.");
+            }
+
+            try
+            {
+                #region Verificar Header
+                var discoverHeader = Request.Headers.GetValues("somiod-discover");
+
+                if (discoverHeader == null || !discoverHeader.Contains("container"))
+                {
+                    return BadRequest("Invalid or missing somiod-discover header.");
+                }
+                #endregion
+
+                #region Verificar se o container existe
+                int containerId = -1;
+                int containerParent = -1;
+                string queryString = "SELECT Id, Parent FROM Containers WHERE name = @Name";
+                //verificar se container existe
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    SqlCommand command = new SqlCommand(queryString, connection);
+                    command.Parameters.AddWithValue("@Name", container);
+                    try
+                    {
+                        command.Connection.Open();
+                        SqlDataReader reader = command.ExecuteReader();
+
+                        if (reader.HasRows)
+                        {
+                            while (reader.Read())
+                            {
+                                containerId = (int)reader["Id"];
+                                containerParent = (int)reader["Parent"];
+                            }
+                            reader.Close();
+                        }
+
+                        if (containerId == -1)
+                        {
+                            //container n existe
+                            return NotFound();
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+                        return InternalServerError();
+                    }
+                }
+                #endregion
+
+                #region Verificar XML Recebido
+                HandlerXML handler = new HandlerXML();
+
+                string requestXML = request.Content.ReadAsStringAsync().Result
+                    .Replace(System.Environment.NewLine, String.Empty);
+
+                if (!handler.IsValidXML(requestXML))
+                {
+                    return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
+                }
+
+                if (!handler.IsValidContainerSchema(requestXML))
+                {
+                    return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
+                }
+
+                Container containertoUpdate = new Container
+                {
+                    Id = containerId,
+                    Name = handler.ContainerRequest(),
+                    Parent = containerParent
+                };
+
+                #endregion
+
+                #region Guardar Alterações
+                queryString = "UPDATE Containers SET name = @Name WHERE id = @Id";
+
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    SqlCommand command = new SqlCommand(queryString, connection);
+                    command.Parameters.AddWithValue("@Name", containertoUpdate.Name);
+                    command.Parameters.AddWithValue("@Id", containerId);
+
+                    try
+                    {
+                        command.Connection.Open();
+                        int rows = command.ExecuteNonQuery();
+                        if (rows < 0)
+                            return NotFound();
+
+                        handler.UpdateContainer(containertoUpdate);
+                        return Ok();
+                    }
+                    catch (Exception ex)
+                    {
+                        return InternalServerError();
+                    }
+                }
+                #endregion
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error discovering resources: {ex.Message}");
+                return InternalServerError();
+            }
         }
 
         // DELETE api/<controller>/5
-        public void Delete(int id)
+        [HttpDelete]
+        [Route("api/somiod/applications/{application}/containers/{container}")]
+        public IHttpActionResult Delete(HttpRequestMessage request , string container)
         {
+            
+            try
+            {
+                #region Verificar Header
+                var discoverHeader = Request.Headers.GetValues("somiod-discover");
+
+                if (discoverHeader == null || !discoverHeader.Contains("container"))
+                {
+                    return BadRequest("Invalid or missing somiod-discover header.");
+                }
+                #endregion
+
+                #region Verificar se o container existe
+                int containerId = -1;
+                int containerParent = -1;
+                string queryString = "SELECT Id, Parent FROM Containers WHERE name = @Name";
+                //verificar se container existe
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    SqlCommand command = new SqlCommand(queryString, connection);
+                    command.Parameters.AddWithValue("@Name", container);
+                    try
+                    {
+                        command.Connection.Open();
+                        SqlDataReader reader = command.ExecuteReader();
+
+                        if (reader.HasRows)
+                        {
+                            while (reader.Read())
+                            {
+                                containerId = (int)reader["Id"];
+                                containerParent = (int)reader["Parent"];
+                            }
+                            reader.Close();
+                        }
+
+                        if (containerId == -1)
+                        {
+                            //container n existe
+                            return NotFound();
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+                        return InternalServerError();
+                    }
+                }
+                #endregion
+
+                #region Apagar Data do Container
+
+                queryString = "DELETE FROM Data WHERE parent = @Id";
+                //verificar se container existe
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    SqlCommand command = new SqlCommand(queryString, connection);
+                    command.Parameters.AddWithValue("@Id", containerId);
+                    try
+                    {
+                        command.Connection.Open();
+                        int rows = command.ExecuteNonQuery();
+                        if (rows < 0)
+                            return InternalServerError();
+
+                    }
+                    catch (Exception ex)
+                    {
+                        return InternalServerError();
+                    }
+                }
+                #endregion
+
+
+                #region Apagar Subscriptions do Container
+
+                queryString = "DELETE FROM Subscriptions WHERE parent = @Id";
+                //verificar se container existe
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    SqlCommand command = new SqlCommand(queryString, connection);
+                    command.Parameters.AddWithValue("@Id", containerId);
+                    try
+                    {
+                        command.Connection.Open();
+                        int rows = command.ExecuteNonQuery();
+                        if (rows < 0)
+                            return InternalServerError();
+
+                    }
+                    catch (Exception ex)
+                    {
+                        return InternalServerError();
+                    }
+                }
+                #endregion
+
+
+                #region Atualizar XML
+                HandlerXML handler = new HandlerXML();
+
+                if (!handler.IsValidXML(requestXML))
+                {
+                    return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
+                }
+
+                if (!handler.IsValidContainerSchema(requestXML))
+                {
+                    return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
+                }
+
+                Container containertoUpdate = new Container
+                {
+                    Id = containerId,
+                    Name = handler.ContainerRequest(),
+                    Parent = containerParent
+                };
+
+                #endregion
+
+                #region Guardar Alterações
+                queryString = "UPDATE Containers SET name = @Name WHERE id = @Id";
+
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    SqlCommand command = new SqlCommand(queryString, connection);
+                    command.Parameters.AddWithValue("@Name", containertoUpdate.Name);
+                    command.Parameters.AddWithValue("@Id", containerId);
+
+                    try
+                    {
+                        command.Connection.Open();
+                        int rows = command.ExecuteNonQuery();
+                        if (rows < 0)
+                            return NotFound();
+
+                        handler.UpdateContainer(containertoUpdate);
+                        return Ok();
+                    }
+                    catch (Exception ex)
+                    {
+                        return InternalServerError();
+                    }
+                }
+                #endregion
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error discovering resources: {ex.Message}");
+                return InternalServerError();
+            }
+
+
+
         }
     }
 }

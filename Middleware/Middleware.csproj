@@ -111,6 +111,7 @@
     </Content>
     <Content Include="Global.asax" />
     <Content Include="Web.config" />
+    <Content Include="XML\Files\applications.xml" />
     <Content Include="XML\Files\temp.xml" />
   </ItemGroup>
   <ItemGroup>
