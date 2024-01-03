@@ -440,7 +440,7 @@ namespace Middleware.Controllers
                 return InternalServerError();
             }
         }
-
+        /*
         // DELETE api/<controller>/5
         [HttpDelete]
         [Route("api/somiod/applications/{application}/containers/{container}")]
@@ -600,6 +600,6 @@ namespace Middleware.Controllers
 
 
 
-        }
+        }*/
     }
 }
