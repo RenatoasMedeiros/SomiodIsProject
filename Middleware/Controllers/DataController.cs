@@ -208,11 +208,9 @@ namespace Middleware.Controllers
 
             // Para cada subscription existente faz um publish MQTT da data
 
-            // Ao fazer o POST, logo de seguida e verificar a resposta OK ou Unternal Server Error
-
+            // Ao fazer o POST, logo de seguida e verificar a resposta OK ou Unternal Server 
 
             string sqlInsert = "INSERT INTO Data (name, content, creation_dt, parent) VALUES (@name, @content, GETDATE(), @parent)";
-            string sqlSelect = "SELECT * FROM Data WHERE Parent = @parent AND UPPER(name) = UPPER(@name)";
 
             try
             {
@@ -229,23 +227,6 @@ namespace Middleware.Controllers
 
                 if (rowsAffected > 0)
                 {
-                    conn.Open();
-                    SqlCommand cmdGetData = new SqlCommand(sqlSelect, conn);
-                    cmdGetData.Parameters.AddWithValue("@parent", newData.Parent);
-                    cmdGetData.Parameters.AddWithValue("@name", newData.Name);
-
-                    SqlDataReader reader = cmdGetData.ExecuteReader();
-                    while (reader.Read())
-                    {
-                        newData.Id = (int)reader["Id"];
-                        newData.Creation_dt = (DateTime)reader["Creation_dt"];
-                    }
-
-                    reader.Close();
-                    conn.Close();
-
-                    //Adicionar a data ao XML
-                    handler.AddData(newData);
                     
                     return Ok();
                 }

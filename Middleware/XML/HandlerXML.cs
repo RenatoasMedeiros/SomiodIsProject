@@ -197,56 +197,23 @@ namespace Middleware.XML
             return data;
         }
 
-        public void AddData(Data data)
-        {
-            XmlDocument docDefinitive = new XmlDocument();
-            docDefinitive.Load(XmlFilePath);
-            XmlNode nodeData = docDefinitive.SelectSingleNode("//applications/application/container[id='" + data.Parent + "']/data");
+        //public void DeleteData(Data selectedData)
+        //{
+        //    XmlDocument docDefinitive = new XmlDocument();
+        //    docDefinitive.Load(XmlFilePath);
 
-            XmlNode xmlData = docDefinitive.CreateElement("data");
+        //    XmlNode data = docDefinitive.SelectSingleNode("//container[id ='" + selectedData.Parent + "']/data");
+        //    int numData = data.ChildNodes.Count;
+        //    XmlNode node = docDefinitive.SelectSingleNode("//data[id ='" + selectedData.Id + "']");
+        //    node.ParentNode.RemoveChild(node);
+        //    if (numData == 1)
+        //    {
+        //        data.ParentNode.RemoveChild(data);
+        //    }
+        //    docDefinitive.Save(XmlFilePath);
 
-            XmlNode nodeAux = docDefinitive.CreateElement("id");
-            nodeAux.InnerText = data.Id.ToString();
-            xmlData.AppendChild(nodeAux);
-
-            nodeAux = docDefinitive.CreateElement("name");
-            nodeAux.InnerText = data.Name.ToString();
-            xmlData.AppendChild(nodeAux);
-
-            nodeAux = docDefinitive.CreateElement("content");
-            nodeAux.InnerText = data.Content;
-            xmlData.AppendChild(nodeAux);
-
-            nodeAux = docDefinitive.CreateElement("creation_dt");
-            nodeAux.InnerText = data.Creation_dt.ToString();
-            xmlData.AppendChild(nodeAux);
-
-            nodeAux = docDefinitive.CreateElement("parent");
-            nodeAux.InnerText = data.Parent.ToString();
-            xmlData.AppendChild(nodeAux);
-
-            docDefinitive.SelectSingleNode("//applications/application/container[id='" + data.Parent + "']").AppendChild(xmlData);
-
-            docDefinitive.Save(XmlFilePath);
-        }
-
-        public void DeleteData(Data selectedData)
-        {
-            XmlDocument docDefinitive = new XmlDocument();
-            docDefinitive.Load(XmlFilePath);
-
-            XmlNode data = docDefinitive.SelectSingleNode("//container[id ='" + selectedData.Parent + "']/data");
-            int numData = data.ChildNodes.Count;
-            XmlNode node = docDefinitive.SelectSingleNode("//data[id ='" + selectedData.Id + "']");
-            node.ParentNode.RemoveChild(node);
-            if (numData == 1)
-            {
-                data.ParentNode.RemoveChild(data);
-            }
-            docDefinitive.Save(XmlFilePath);
-
-            Debug.Print("[DEBUG] 'Data deleted with success' | DeleteData() in HandlerXML");
-        }
+        //    Debug.Print("[DEBUG] 'Data deleted with success' | DeleteData() in HandlerXML");
+        //}
 
         #endregion
 
