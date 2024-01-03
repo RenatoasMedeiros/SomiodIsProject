@@ -71,84 +71,84 @@ namespace Middleware.Controllers
         #region CRUDS
 
         // create new subscription.
-        [HttpPost]
-        [Route("api/somiod/{appName}/{containerName}")]
-        public IHttpActionResult Post([FromBody] string appName, [FromBody] string containerName)
-        {
-            // Verificar se application ou container estão guardados na BD.
-            string sqlApplication = "SELECT Id FROM Applications WHERE UPPER(Name) = UPPER(@AppName)";
-            string sqlContainer = "SELECT Id, Name FROM Containers WHERE UPPER(Name) = UPPER(@ContainerName) and Parent = @AppId";
+        //[HttpPost]
+        //[Route("api/somiod/{appName}/{containerName}")]
+        //public IHttpActionResult Post([FromBody] string appName, [FromBody] string containerName)
+        //{
+        //    // Verificar se application ou container estão guardados na BD.
+        //    string sqlApplication = "SELECT Id FROM Applications WHERE UPPER(Name) = UPPER(@AppName)";
+        //    string sqlContainer = "SELECT Id, Name FROM Containers WHERE UPPER(Name) = UPPER(@ContainerName) and Parent = @AppId";
 
-            // init dos Ids.
-            int appId = -1, containerId = -1;
-            SqlConnection conn = null;
+        //    // init dos Ids.
+        //    int appId = -1, containerId = -1;
+        //    SqlConnection conn = null;
 
-            try
-            {
-                // tentar ligar a BD.
-                conn = new SqlConnection(connectionString);
-                conn.Open();
+        //    try
+        //    {
+        //        // tentar ligar a BD.
+        //        conn = new SqlConnection(connectionString);
+        //        conn.Open();
 
-                // construir a query para procurar o a aplicação.
-                SqlCommand cmdApp = new SqlCommand(sqlApplication, conn);
-                cmdApp.Parameters.AddWithValue("@AppName", appName);
+        //        // construir a query para procurar o a aplicação.
+        //        SqlCommand cmdApp = new SqlCommand(sqlApplication, conn);
+        //        cmdApp.Parameters.AddWithValue("@AppName", appName);
 
-                // executar a query e guardar o AppId se for encontrado uma aplicação igual ao desejado.
-                SqlDataReader readerApp = cmdApp.ExecuteReader();
-                while (readerApp.Read())
-                {
-                    appId = (int)readerApp["Id"];
-                }
+        //        // executar a query e guardar o AppId se for encontrado uma aplicação igual ao desejado.
+        //        SqlDataReader readerApp = cmdApp.ExecuteReader();
+        //        while (readerApp.Read())
+        //        {
+        //            appId = (int)readerApp["Id"];
+        //        }
 
-                readerApp.Close(); // para a procura
+        //        readerApp.Close(); // para a procura
 
-                // Se o appId se mantiver em '-1', então não foi encontrada nenhuma aplicação.
-                if (appId == -1)
-                {
-                    conn.Close();
-                    Debug.Print("[DEBUG] 'Applications does not exist' | Post() in SubscriptionController");
-                    return Content(HttpStatusCode.BadRequest, "Application does not exist", Configuration.Formatters.XmlFormatter);
-                }
+        //        // Se o appId se mantiver em '-1', então não foi encontrada nenhuma aplicação.
+        //        if (appId == -1)
+        //        {
+        //            conn.Close();
+        //            Debug.Print("[DEBUG] 'Applications does not exist' | Post() in SubscriptionController");
+        //            return Content(HttpStatusCode.BadRequest, "Application does not exist", Configuration.Formatters.XmlFormatter);
+        //        }
 
-                // Fazer verificação do containerName recebido.
-                SqlCommand cmdContainer = new SqlCommand(sqlContainer, conn);
-                cmdContainer.Parameters.AddWithValue("@containerName", containerName);
-                cmdContainer.Parameters.AddWithValue("@AppId", appId);
+        //        // Fazer verificação do containerName recebido.
+        //        SqlCommand cmdContainer = new SqlCommand(sqlContainer, conn);
+        //        cmdContainer.Parameters.AddWithValue("@containerName", containerName);
+        //        cmdContainer.Parameters.AddWithValue("@AppId", appId);
 
-                // executa a query e procura ate encontrar um matching container.
-                SqlDataReader readerContainer = cmdContainer.ExecuteReader();
-                while (readerContainer.Read())
-                {
-                    containerId = (int)readerContainer["Id"];
-                }
+        //        // executa a query e procura ate encontrar um matching container.
+        //        SqlDataReader readerContainer = cmdContainer.ExecuteReader();
+        //        while (readerContainer.Read())
+        //        {
+        //            containerId = (int)readerContainer["Id"];
+        //        }
 
-                readerContainer.Close(); // para a procura
+        //        readerContainer.Close(); // para a procura
 
-                // msg de erro
-                if (containerId == -1)
-                {
-                    conn.Close();
-                    Debug.Print("[DEBUG] 'Container does not exist in this application' | Post() in SubscriptionController");
-                    return Content(HttpStatusCode.BadRequest, "Container does not exist in this application", Configuration.Formatters.XmlFormatter);
-                }
-                conn.Close();
-            }
-            catch (Exception ex)
-            {
-                Debug.Print("[DEBUG] 'Exception in Post() in SubscriptionController' | " + ex.Message);
+        //        // msg de erro
+        //        if (containerId == -1)
+        //        {
+        //            conn.Close();
+        //            Debug.Print("[DEBUG] 'Container does not exist in this application' | Post() in SubscriptionController");
+        //            return Content(HttpStatusCode.BadRequest, "Container does not exist in this application", Configuration.Formatters.XmlFormatter);
+        //        }
+        //        conn.Close();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Debug.Print("[DEBUG] 'Exception in Post() in SubscriptionController' | " + ex.Message);
 
-                if (conn.State == System.Data.ConnectionState.Open)
-                {
-                    conn.Close();
-                }
-                return InternalServerError();
-            }
+        //        if (conn.State == System.Data.ConnectionState.Open)
+        //        {
+        //            conn.Close();
+        //        }
+        //        return InternalServerError();
+        //    }
 
-            // verificar se o XML do request é valido
+        //    // verificar se o XML do request é valido
 
 
-            return null;
-        }
+        //    return null;
+        //}
 
 
         //Delete method

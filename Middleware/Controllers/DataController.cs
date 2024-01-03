@@ -21,16 +21,15 @@ namespace Middleware.Controllers
 
         #region GET Data
 
-        // GET -H “content-type: application/xml” -H “somiod-discover: data” http://<domain:9876>/api/somiod/app1 ➔ returns all the data records(names) that are child from app1.
         [HttpGet]
-        [Route("api/somiod/{application}/data")] // não é suposto ser data
-        public IEnumerable<Data> GetAllData(string applicationName)
+        [Route("api/somiod/{application}/data")]
+        public IEnumerable<Data> GetAllData(string application)
         {
             List<Data> data = new List<Data>();
             string sql = "SELECT d.* FROM Data d " +
                  "JOIN Containers c ON d.parent = c.id " +
                  "JOIN Applications a ON c.parent = a.id " +
-                 "WHERE a.name = @ApplicationName";
+                 "WHERE a.name = @Application";
 
             SqlConnection conn = null;
 
@@ -39,7 +38,7 @@ namespace Middleware.Controllers
                 conn = new SqlConnection(connectionString);
                 conn.Open();
                 SqlCommand cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@ApplicationName", applicationName);
+                cmd.Parameters.AddWithValue("@Application", application);
                 SqlDataReader reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
@@ -57,7 +56,7 @@ namespace Middleware.Controllers
             }
             catch (Exception ex)
             {
-                Debug.Print("[DEBUG] 'Exception in Get() in DataController' | " + ex.Message);
+                Debug.Print("[DEBUG] 'Exception on Get() method in DataController' | " + ex.Message);
 
                 if (conn.State == System.Data.ConnectionState.Open)
                 {
@@ -72,7 +71,7 @@ namespace Middleware.Controllers
 
         [HttpGet]
         [Route("api/somiod/{application}/{container}/{dataName}/data")]
-        public Data GetDatabyName(string dataName)
+        public IHttpActionResult GetDatabyName(string dataName)
         {
             Data data = new Data();
             string sql = "SELECT * FROM Data WHERE name = @DataName";
@@ -86,21 +85,30 @@ namespace Middleware.Controllers
                 SqlCommand cmd = new SqlCommand(sql, conn);
                 cmd.Parameters.AddWithValue("@DataName", dataName);
                 SqlDataReader reader = cmd.ExecuteReader();
-                while (reader.Read())
+
+                if (reader.HasRows)
                 {
+                    while (reader.Read())
+                    {
 
-                    data.Id = (int)reader["id"];
-                    data.Name = (string)reader["name"];
-                    data.Content = (string)reader["content"];
-                    data.Creation_dt = (DateTime)reader["creation_dt"];
-                    data.Parent = (int)reader["parent"];
-                    
+                        data.Id = (int)reader["id"];
+                        data.Name = (string)reader["name"];
+                        data.Content = (string)reader["content"];
+                        data.Creation_dt = (DateTime)reader["creation_dt"];
+                        data.Parent = (int)reader["parent"];
+
+                    }
+                    reader.Close();
+                    conn.Close();
+
+                    return Ok(data);
                 }
-                reader.Close();
-                conn.Close();
-
-                return data;
-
+                else
+                {
+                    reader.Close();
+                    conn.Close();
+                    return NotFound();
+                }
             }
             catch (Exception ex)
             {
@@ -110,7 +118,7 @@ namespace Middleware.Controllers
                 {
                     conn.Close();
                 }
-                return data;
+                return InternalServerError();
             }
 
         }
@@ -235,7 +243,7 @@ namespace Middleware.Controllers
             }
             catch (Exception ex)
             {
-                Debug.Print("[DEBUG] 'Exception in Post() in DataController' | " + ex.Message);
+                Debug.Print("[DEBUG] 'Exception on Post() method in DataController' | " + ex.Message);
 
                 if (conn.State == System.Data.ConnectionState.Open)
                 {
@@ -250,23 +258,87 @@ namespace Middleware.Controllers
         #region PUT Data
 
         [HttpPut]
-        [Route("api/somiod/{application}/{container}/data/{id}")]
-        public IHttpActionResult Put(int id, [FromBody] Data editedData)
+        [Route("api/somiod/{application}/{container}/data/{dataName}")]
+        public IHttpActionResult Put(HttpRequestMessage requestDataToEdit, string dataName)
         {
 
-            string sql = "UPDATE Data SET name = @Name, content = @Content WHERE id = @Id";
+            if (requestDataToEdit.Content == null)
+            {
+                return BadRequest("Invalid data. The request body cannot be empty.");
+            }
 
             SqlConnection conn = null;
-
             try
             {
+
+                #region VerificarXML
+
+                HandlerXML handler = new HandlerXML();
+
+                string requestXML = requestDataToEdit.Content.ReadAsStringAsync().Result
+                    .Replace(System.Environment.NewLine, String.Empty);
+
+                if (!handler.IsValidXML(requestXML))
+                    return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
+
+                if (!handler.ValidateDataSchemaXML(requestXML))
+                    return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
+
+                #endregion
+
+                #region Verificar se a data existe
+                int dataId = -1;
+                int dataParent = -1;
+                string queryString = "SELECT Id, Parent FROM Data WHERE name = @dataName";
+                
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    SqlCommand command = new SqlCommand(queryString, connection);
+                    command.Parameters.AddWithValue("@dataName", dataName);
+                    try
+                    {
+                        command.Connection.Open();
+                        SqlDataReader reader = command.ExecuteReader();
+
+                        if (reader.HasRows)
+                        {
+                            while (reader.Read())
+                            {
+                                dataId = (int)reader["Id"];
+                                dataParent = (int)reader["Parent"];
+                            }
+                            reader.Close();
+                        }
+
+                        if (dataId == -1)
+                            return NotFound();
+
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.Print("[DEBUG] 'Exception on Put() method in DataController' | " + ex.Message);
+
+                        return InternalServerError();
+                    }
+                }
+                #endregion
+
+                Data dataToEdit = new Data
+                {
+                    Id = dataId,
+                    Name = handler.DataRequest().Name,
+                    Content = handler.DataRequest().Content,
+                    Parent = dataParent
+                };
+
+                string sql = "UPDATE Data SET name = @Name, content = @Content WHERE name = @dataName";
+
                 conn = new SqlConnection(connectionString);
                 conn.Open();
                 SqlCommand cmd = new SqlCommand(sql, conn);
 
-                cmd.Parameters.AddWithValue("@Id", id);
-                cmd.Parameters.AddWithValue("@Name", editedData.Name);
-                cmd.Parameters.AddWithValue("@Content", editedData.Content);
+                cmd.Parameters.AddWithValue("@Name", dataToEdit.Name);
+                cmd.Parameters.AddWithValue("@Content", dataToEdit.Content);
 
                 int rowsAffected = cmd.ExecuteNonQuery();
                 conn.Close();

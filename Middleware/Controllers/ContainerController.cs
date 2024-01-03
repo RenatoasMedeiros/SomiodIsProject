@@ -252,7 +252,7 @@ namespace Middleware.Controllers
                     return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
                 }
 
-                if (!handler.IsValidContainerSchema(requestXML))
+                if (!handler.ValidateDataSchemaXML(requestXML))
                 {
                     return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
                 }
@@ -394,7 +394,7 @@ namespace Middleware.Controllers
                     return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
                 }
 
-                if (!handler.IsValidContainerSchema(requestXML))
+                if (!handler.ValidateDataSchemaXML(requestXML))
                 {
                     return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
                 }
@@ -440,6 +440,7 @@ namespace Middleware.Controllers
                 return InternalServerError();
             }
         }
+
         /*
         // DELETE api/<controller>/5
         [HttpDelete]
