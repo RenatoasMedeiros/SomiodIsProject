@@ -154,6 +154,13 @@ namespace Middleware.XML
 
             node.InnerXml += XML;
 
+            XmlNode resType = docTemp.SelectSingleNode("//res_type");
+
+            if(resType.InnerText != "container")
+                return false;
+
+            docTemp.RemoveChild(resType);
+
             docTemp.Save(XmlFileTempPath);
 
             if (ValidateXML(XmlFileTempPath, XsdFilePathContainers))

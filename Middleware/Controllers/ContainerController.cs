@@ -18,11 +18,10 @@ namespace Middleware.Controllers
         string connectionString = Properties.Settings.Default.ConnStr;
 
         // GET api/somiod/app
+        //Return XML
         [HttpGet]
         [Route("api/somiod/applications/{application}/containers")]
-        public IEnumerable<Container> GetAllContainers([FromUri] string application)
-
-        {
+        public IEnumerable<Container> GetAllContainers([FromUri] string application){
 
             List<Container> containers = new List<Container>();
             #region Verificar Header
@@ -34,7 +33,7 @@ namespace Middleware.Controllers
             }
             #endregion
 
-            
+          
             int parentId = -1;
             string queryString = "SELECT Id FROM Applications WHERE name = @name";
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -62,7 +61,6 @@ namespace Middleware.Controllers
                 }
 
                 queryString = "SELECT * FROM Containers WHERE parent = @Parent";
-
 
                 command = new SqlCommand(queryString, connection);
                 command.Parameters.AddWithValue("@Parent", parentId);
@@ -98,7 +96,6 @@ namespace Middleware.Controllers
 
         }
     
-
         public List<string> DiscoverContainers()
         {
             try
@@ -131,9 +128,10 @@ namespace Middleware.Controllers
         }
 
         //Get apenas dos containers desta aplicação 
+        //Return XML
         [HttpGet]
         [Route("api/somiod/applications/{application}/containers/{container}")]
-        public IHttpActionResult GetContainerByName([FromUri] string application, [FromUri] string container)
+        public IHttpActionResult GetContainer([FromUri] string container)
         {
 
             //encontrar o parent para adicionar à query 
@@ -189,10 +187,12 @@ namespace Middleware.Controllers
         [Route("api/somiod/applications/{application}/containers")]
         public IHttpActionResult PostContainer(HttpRequestMessage request, string application)
         {
+            #region Verificar Content
             if (request.Content == null)
             {
                 return BadRequest("Invalid data. The request body cannot be empty.");
             }
+            #endregion
 
             try
             {
@@ -203,6 +203,12 @@ namespace Middleware.Controllers
                 {
                     return BadRequest("Invalid or missing somiod-discover header.");
                 }
+                #endregion
+
+                #region Verificar Body res_type
+
+
+
                 #endregion
 
                 #region Verificar se parent existe
@@ -425,7 +431,7 @@ namespace Middleware.Controllers
                             return NotFound();
 
                         //handler.UpdateContainer(containertoUpdate);
-                        return Ok();
+                        return Content(HttpStatusCode.OK, "Container Updated Succefully", Configuration.Formatters.XmlFormatter);
                     }
                     catch (Exception ex)
                     {
@@ -433,6 +439,7 @@ namespace Middleware.Controllers
                     }
                 }
                 #endregion
+
             }
             catch (Exception ex)
             {
@@ -590,7 +597,7 @@ namespace Middleware.Controllers
                 #endregion
                 */
 
-                return Content(HttpStatusCode.OK, "Container Deleted Succefully");
+                return Content(HttpStatusCode.OK, "Container Deleted Succefully", Configuration.Formatters.XmlFormatter);
 
             }
             catch (Exception ex)
