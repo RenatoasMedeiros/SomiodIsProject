@@ -33,7 +33,6 @@ namespace Middleware.Controllers
             }
             #endregion
 
-          
             int parentId = -1;
             string queryString = "SELECT Id FROM Applications WHERE name = @name";
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -205,10 +204,22 @@ namespace Middleware.Controllers
                 }
                 #endregion
 
-                #region Verificar Body res_type
+                #region Verificar XML Recebido 
+                HandlerXML handler = new HandlerXML();
+
+                string requestXML = request.Content.ReadAsStringAsync().Result
+                    .Replace(System.Environment.NewLine, String.Empty);
 
 
+                if (!handler.IsValidXML(requestXML))
+                {
+                    return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
+                }
 
+                if (!handler.IsValidContainerSchema(requestXML))
+                {
+                    return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
+                }
                 #endregion
 
                 #region Verificar se parent existe
@@ -244,24 +255,7 @@ namespace Middleware.Controllers
                         return InternalServerError();
                     }
                 }
-                #endregion
-
-                #region Verificar XML Recebido 
-                HandlerXML handler = new HandlerXML();
-
-                string requestXML = request.Content.ReadAsStringAsync().Result
-                    .Replace(System.Environment.NewLine, String.Empty);
-
-
-                if (!handler.IsValidXML(requestXML))
-                {
-                    return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
-                }
-
-                if (!handler.IsValidContainerSchema(requestXML))
-                {
-                    return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
-                }
+               
 
                 Container container = new Container
                 {
