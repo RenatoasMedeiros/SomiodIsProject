@@ -441,13 +441,13 @@ namespace Middleware.Controllers
             }
         }
 
-        /*
         // DELETE api/<controller>/5
         [HttpDelete]
         [Route("api/somiod/applications/{application}/containers/{container}")]
-        public IHttpActionResult Delete(HttpRequestMessage request , string container)
+
+        public IHttpActionResult Delete(HttpRequestMessage request, string container)
         {
-            
+
             try
             {
                 #region Verificar Header
@@ -544,7 +544,29 @@ namespace Middleware.Controllers
                 }
                 #endregion
 
+                #region Apagar Container
 
+                queryString = "DELETE FROM Containers WHERE id = @Id";
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    SqlCommand command = new SqlCommand(queryString, connection);
+                    command.Parameters.AddWithValue("@Id", containerId);
+                    try
+                    {
+                        command.Connection.Open();
+                        int rows = command.ExecuteNonQuery();
+                        if (rows < 0)
+                            return InternalServerError();
+
+                    }
+                    catch (Exception ex)
+                    {
+                        return InternalServerError();
+                    }
+                }
+                #endregion
+
+                /*
                 #region Atualizar XML
                 HandlerXML handler = new HandlerXML();
 
@@ -566,41 +588,16 @@ namespace Middleware.Controllers
                 };
 
                 #endregion
+                */
 
-                #region Guardar Alterações
-                queryString = "UPDATE Containers SET name = @Name WHERE id = @Id";
+                return Content(HttpStatusCode.OK, "Container Deleted Succefully", Configuration.Formatters.XmlFormatter);
 
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    SqlCommand command = new SqlCommand(queryString, connection);
-                    command.Parameters.AddWithValue("@Name", containertoUpdate.Name);
-                    command.Parameters.AddWithValue("@Id", containerId);
-
-                    try
-                    {
-                        command.Connection.Open();
-                        int rows = command.ExecuteNonQuery();
-                        if (rows < 0)
-                            return NotFound();
-
-                        handler.UpdateContainer(containertoUpdate);
-                        return Ok();
-                    }
-                    catch (Exception ex)
-                    {
-                        return InternalServerError();
-                    }
-                }
-                #endregion
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error discovering resources: {ex.Message}");
                 return InternalServerError();
             }
-
-
-
-        }*/
+        }
     }
 }
