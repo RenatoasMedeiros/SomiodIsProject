@@ -26,8 +26,6 @@ namespace Middleware.XML
         {
             XmlFileTempPath = HostingEnvironment.MapPath("~/XML/Files/temp.xml");
 
-            XmlFilePath = HostingEnvironment.MapPath("~/XML/Files/applications.xml");
-
             XsdFilePathApplications = HostingEnvironment.MapPath("~/XML/Schema/application.xsd");
 
             XsdFilePathData = HostingEnvironment.MapPath("~/XML/Schema/data.xsd");
