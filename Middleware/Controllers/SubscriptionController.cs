@@ -82,15 +82,15 @@ namespace Middleware.Controllers
             int appId = -1, containerId = -1;
             SqlConnection conn = null;
 
-            try
-            {
-                // tentar ligar a BD.
-                conn = new SqlConnection(connectionString);
-                conn.Open();
+        //    try
+        //    {
+        //        // tentar ligar a BD.
+        //        conn = new SqlConnection(connectionString);
+        //        conn.Open();
 
-                // construir a query para procurar o a aplicação.
-                SqlCommand cmdApp = new SqlCommand(sqlApplication, conn);
-                cmdApp.Parameters.AddWithValue("@AppName", appName);
+        //        // construir a query para procurar o a aplicação.
+        //        SqlCommand cmdApp = new SqlCommand(sqlApplication, conn);
+        //        cmdApp.Parameters.AddWithValue("@AppName", appName);
 
                 // executar a query e guardar o AppId se for encontrado uma aplicação igual ao desejado.
                 SqlDataReader readerApp = cmdApp.ExecuteReader();
@@ -101,27 +101,27 @@ namespace Middleware.Controllers
 
                 readerApp.Close(); // Termina a procura
 
-                // Se o appId se mantiver em '-1', então não foi encontrada nenhuma aplicação.
-                if (appId == -1)
-                {
-                    conn.Close();
-                    Debug.Print("[DEBUG] 'Applications does not exist' | Post() in SubscriptionController");
-                    return Content(HttpStatusCode.BadRequest, "Application does not exist", Configuration.Formatters.XmlFormatter);
-                }
+        //        // Se o appId se mantiver em '-1', então não foi encontrada nenhuma aplicação.
+        //        if (appId == -1)
+        //        {
+        //            conn.Close();
+        //            Debug.Print("[DEBUG] 'Applications does not exist' | Post() in SubscriptionController");
+        //            return Content(HttpStatusCode.BadRequest, "Application does not exist", Configuration.Formatters.XmlFormatter);
+        //        }
 
                 // Após a verificação da aplicação, fazer verificação do container desta aplicação.
                 SqlCommand cmdContainer = new SqlCommand(sqlContainer, conn);
                 cmdContainer.Parameters.AddWithValue("@containerName", containerName);
                 cmdContainer.Parameters.AddWithValue("@AppId", appId);
 
-                // executa a query e procura ate encontrar um matching container.
-                SqlDataReader readerContainer = cmdContainer.ExecuteReader();
-                while (readerContainer.Read())
-                {
-                    containerId = (int)readerContainer["Id"];
-                }
+        //        // executa a query e procura ate encontrar um matching container.
+        //        SqlDataReader readerContainer = cmdContainer.ExecuteReader();
+        //        while (readerContainer.Read())
+        //        {
+        //            containerId = (int)readerContainer["Id"];
+        //        }
 
-                readerContainer.Close(); // para a procura
+        //        readerContainer.Close(); // para a procura
 
                 // msg de erro do container
                 if (containerId == -1)
@@ -136,12 +136,12 @@ namespace Middleware.Controllers
             {
                 Debug.Print("[DEBUG] 'Exception in Post() in SubscriptionController' | " + ex.Message);
 
-                if (conn.State == System.Data.ConnectionState.Open)
-                {
-                    conn.Close();
-                }
-                return InternalServerError();
-            }
+        //        if (conn.State == System.Data.ConnectionState.Open)
+        //        {
+        //            conn.Close();
+        //        }
+        //        return InternalServerError();
+        //    }
 
             // verificar se o XML do request é valido.
             HandlerXML handler = new HandlerXML();

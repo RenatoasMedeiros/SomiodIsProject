@@ -1,13 +1,11 @@
 ﻿
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
-using System.Xml.Schema;
-using System.Xml;
 using Middleware.Models;
+using System;
 using System.Diagnostics;
 using System.Web.Hosting;
+using System.Xml;
+using System.Xml.Schema;
+
 
 
 namespace Middleware.XML
@@ -31,13 +29,16 @@ namespace Middleware.XML
 
             XmlFilePath = HostingEnvironment.MapPath("~/XML/Files/applications.xml");
 
-            XsdFilePathApplications = HostingEnvironment.MapPath("~/XML/Schemas/application.xsd");
+            XsdFilePathApplications = HostingEnvironment.MapPath("~/XML/Schema/application.xsd");
+
+            XsdFilePathData = HostingEnvironment.MapPath("~/XML/Schema/data.xsd");
         }
 
 
-
         #region XML Application handler
-        // funções para os applications
+
+        // Funções para as applications
+
         public bool IsValidApplicationSchemaXML(string rawXml)
         {
             XmlDocument docTemp = new XmlDocument();
@@ -207,6 +208,105 @@ namespace Middleware.XML
 
         #region Compare XML with XML Schema (xsd)
 
+        public string ContainerRequest()
+        {
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+
+            string container = docTemp.SelectSingleNode("//somiod/container/name").InnerText;
+
+            RefreshTempFile();
+
+            return container;
+        }
+        #endregion
+
+        #region XML Data handler
+
+        // Valida o Schema do Data
+        public bool ValidateDataSchemaXML(string rawXml)
+        {
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+            XmlNode node = docTemp.SelectSingleNode("//somiod");
+
+            node.InnerXml += rawXml;
+
+            docTemp.Save(XmlFileTempPath);
+
+            if (ValidateXML(XmlFileTempPath, XsdFilePathData))
+            {
+                return true;
+            }
+
+            Debug.Print("[DEBUG] 'Invalid Schema in XML' | ValidateDataSchemaXML() in HandlerXML");
+            RefreshTempFile();
+            return false;
+        }
+
+        // Analisa e extrai dados relevantes para processos subsequentes
+
+        public Data DataRequest()
+        {
+            Data data = new Data();
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+
+            XmlNode node = docTemp.SelectSingleNode("//somiod/data");
+
+            if (node != null)
+            {
+                if (node.SelectSingleNode("name") != null)
+                {
+                    data.Name = node.SelectSingleNode("name").InnerText;
+                }
+
+                if (node.SelectSingleNode("content") != null)
+                {
+                    data.Content = node.SelectSingleNode("content").InnerText;
+                }
+            }
+
+            RefreshTempFile();
+            return data;
+        }
+
+        #endregion
+
+        #region XML Subscriptions handler
+
+        // Faz tratamento dos dados do request retorna uma nova subscription 
+        public Subscription SubscriptionRequest()
+        {
+            XmlDocument doc = new XmlDocument();
+            Subscription subscription = new Subscription();
+            doc.Load(XmlFileTempPath);
+
+            XmlNode node = doc.SelectSingleNode("//somiod/subscription");
+            if (node.SelectSingleNode("name") != null)
+            {
+                subscription.Name = node.SelectSingleNode("name").InnerText;
+            }
+
+            if (node.SelectSingleNode("event") != null)
+            {
+                subscription.Event = node.SelectSingleNode("event").InnerText;
+            }
+
+            if (node.SelectSingleNode("endpoint") != null)
+            {
+                subscription.Endpoint = node.SelectSingleNode("endpoint").InnerText;
+            }
+
+            RefreshTempFile();
+            return subscription;
+        }
+
+        #endregion
+
+        #region Compare XML with XML Schema (xsd)
+
+        // Valida o XML em relação ao XSD Schema
         public bool ValidateXML(string file, string XsdFilePath)
         {
             isValid = true;
@@ -226,7 +326,7 @@ namespace Middleware.XML
             return isValid;
         }
 
-        // 
+        // Evento para lidar com os erros e avisos durante a validação XML ^
         private void EventErrorValidation(object sender, ValidationEventArgs args)
         {
             isValid = false;
@@ -266,6 +366,7 @@ namespace Middleware.XML
             }
         }
 
+        // Limpa qualquer ficheiro XML temporário
         public void RefreshTempFile()
         {
             XmlDocument docTemp = new XmlDocument();

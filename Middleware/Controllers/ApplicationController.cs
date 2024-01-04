@@ -18,17 +18,20 @@ namespace Middleware.Controllers
 
         // GET: api/Application
         [HttpGet]
-        [Route("api/somiod/applications")]
+        [Route("api/somiod")]
         public IHttpActionResult GetApplications()
         {
-            List<string> applicationNames = DiscoverApplications();
-            return Ok(applicationNames);
+            //List<string> applicationNames = DiscoverApplications();
+            return Ok();//(applicationNames);
         }
 
         // GET: api/Application/1
         [HttpGet]
         [Route("api/somiod/applications/{name}")]
-        public IHttpActionResult GetApplication(string name)
+
+        /*[HttpGet]
+        [Route("api/somiod/{application}")]
+        public IHttpActionResult GetApplication(int id)
         {
             Application application = GetApplicationByName(name);
             if (application != null)
@@ -41,6 +44,13 @@ namespace Middleware.Controllers
         [HttpPost]
         [Route("api/somiod")]
         public IHttpActionResult PostApplication(HttpRequestMessage request)
+        }*/
+       
+
+        // POST: api/Application
+        [HttpPost]
+        [Route("api/somiod")]
+        public IHttpActionResult PostApplication(Application application)
         {
             HandlerXML handler = new HandlerXML();
 
@@ -52,87 +62,140 @@ namespace Middleware.Controllers
             //Verifico se a string que veio do request é XML
             if (!handler.IsValidXML(rawXml))
             {
-                Debug.Print("[DEBUG] 'String is not XML' | Post() in ApplicationController");
-                return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
+                
+                return CreatedAtRoute("DefaultApi", new { id = application.Id }, application);
             }
-
-            //Verifica se o ficheiro XML está de acordo o XSD
-            if (!handler.IsValidApplicationSchemaXML(rawXml))
-            {
-                Debug.Print("[DEBUG] 'Invalid Schema in XML' | Post() in ApplicationController");
-                return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
-            }
-
-            //Começo o tratamento de dados
-            Application application = new Application();
-
-            application.Name = handler.DealRequestApplication();
-
-            if (String.IsNullOrEmpty(application.Name))
-            {
-                return Content(HttpStatusCode.BadRequest, "Name is Empty", Configuration.Formatters.XmlFormatter);
-            }
-
-            //Verifico se o nome da aplicação já existe
-            string sqlVerifyApplication = "SELECT COUNT(*) FROM Applications WHERE UPPER(Name) = UPPER(@Name)";
-            string sqlGetApplication = "SELECT * FROM Applications WHERE UPPER(Name) = UPPER(@Name)";
-            string sqlPostApplication = "INSERT INTO Applications (Name, Creation_dt) VALUES (@Name, @Creation_dt)";
-
-            SqlConnection conn = null;
-
-            try
-            {
-                conn = new SqlConnection(connectionString);
-                conn.Open();
-
-                SqlCommand cmdExists = new SqlCommand(sqlVerifyApplication, conn);
-                cmdExists.Parameters.AddWithValue("@Name", application.Name);
-
-                if ((int)cmdExists.ExecuteScalar() > 0)
-                {
-                    conn.Close();
-                    return Content(HttpStatusCode.BadRequest, "Application name already exists", Configuration.Formatters.XmlFormatter);
-                }
-
-                SqlCommand cmdPost = new SqlCommand(sqlPostApplication, conn);
-                cmdPost.Parameters.AddWithValue("@Name", application.Name);
-                cmdPost.Parameters.AddWithValue("@Creation_dt", DateTime.Now);
-
-                int numRows = cmdPost.ExecuteNonQuery();
-
-                if (numRows > 0)
-                {
-                    //Vou fazer um select para ir buscar o id o creation_dt
-                    SqlCommand cmdGet = new SqlCommand(sqlGetApplication, conn);
-                    cmdGet.Parameters.AddWithValue("@Name", application.Name);
-
-                    SqlDataReader reader = cmdGet.ExecuteReader();
-                    while (reader.Read())
-                    {
-                        application.Id = (int)reader["Id"];
-                        application.Name = (string)reader["Name"];
-                        application.Creation_dt = (DateTime)reader["Creation_dt"];
-                    }
-
-                    reader.Close();
-                    conn.Close();
-
-                    handler.AddApplication(application);
-                    return Content(HttpStatusCode.OK, "Application created successfully", Configuration.Formatters.XmlFormatter);
-                }
-                return InternalServerError();
-            }
-            catch (Exception e)
-            {
-                Debug.Print("[DEBUG] 'Exception in Post() in ApplicationController' | " + e.Message);
-
-                if (conn.State == System.Data.ConnectionState.Open)
-                {
-                    conn.Close();
-                }
-                return InternalServerError();
-            }
+            return BadRequest(ModelState);
         }
+
+        // PUT: api/Application/1
+        [HttpPut]
+        [Route("api/somiod/{application}")]
+        public IHttpActionResult PutApplication(int id, Application application)
+        {
+            if (id != application.Id)
+            {
+                return BadRequest("Mismatched Ids");
+            }
+
+            if (ModelState.IsValid)
+            {
+                UpdateApplication(application);
+                return Ok(application);
+            }
+
+            return BadRequest(ModelState);
+        }
+
+        // DELETE: api/Application/1
+        [HttpDelete]
+        [Route("api/somiod/{application}")]
+        public IHttpActionResult DeleteApplication(int id)
+        {
+           // Application application = GetApplicationById(id);
+            /*if (application != null)
+            {
+                DeleteApplicationById(id);
+                return Ok(application);
+            }*/
+            return NotFound();
+        }
+
+        ////[HttpPost]
+        ////[Route("api/somiod")]
+        //private void AddApplication(Application application)
+        //{
+        //    HandlerXML handler = new HandlerXML();
+
+        //    string teste = Request.Content.ToString();
+        //    //Retiro todos os caracteres e espaços desnecessários
+        //    string rawXml = request.Content.ReadAsStringAsync().Result
+        //        .Replace(System.Environment.NewLine, String.Empty);
+
+        //    //Verifico se a string que veio do request é XML
+        //    if (!handler.IsValidXML(rawXml))
+        //    {
+        //        Debug.Print("[DEBUG] 'String is not XML' | Post() in ApplicationController");
+        //        return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
+        //    }
+
+        //    //Verifica se o ficheiro XML está de acordo o XSD
+        //    if (!handler.IsValidApplicationSchemaXML(rawXml))
+        //    {
+        //        Debug.Print("[DEBUG] 'Invalid Schema in XML' | Post() in ApplicationController");
+        //        return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
+        //    }
+
+        //    //Começo o tratamento de dados
+        //    Application application = new Application();
+
+        //    application.Name = handler.DealRequestApplication();
+
+        //    if (String.IsNullOrEmpty(application.Name))
+        //    {
+        //        return Content(HttpStatusCode.BadRequest, "Name is Empty", Configuration.Formatters.XmlFormatter);
+        //    }
+
+        //    //Verifico se o nome da aplicação já existe
+        //    string sqlVerifyApplication = "SELECT COUNT(*) FROM Applications WHERE UPPER(Name) = UPPER(@Name)";
+        //    string sqlGetApplication = "SELECT * FROM Applications WHERE UPPER(Name) = UPPER(@Name)";
+        //    string sqlPostApplication = "INSERT INTO Applications (Name, Creation_dt) VALUES (@Name, @Creation_dt)";
+
+        //    SqlConnection conn = null;
+
+        //    try
+        //    {
+        //        conn = new SqlConnection(connectionString);
+        //        conn.Open();
+
+        //        SqlCommand cmdExists = new SqlCommand(sqlVerifyApplication, conn);
+        //        cmdExists.Parameters.AddWithValue("@Name", application.Name);
+
+        //        if ((int)cmdExists.ExecuteScalar() > 0)
+        //        {
+        //            conn.Close();
+        //            return Content(HttpStatusCode.BadRequest, "Application name already exists", Configuration.Formatters.XmlFormatter);
+        //        }
+
+        //        SqlCommand cmdPost = new SqlCommand(sqlPostApplication, conn);
+        //        cmdPost.Parameters.AddWithValue("@Name", application.Name);
+        //        cmdPost.Parameters.AddWithValue("@Creation_dt", DateTime.Now);
+
+        //        int numRows = cmdPost.ExecuteNonQuery();
+
+        //        if (numRows > 0)
+        //        {
+        //            //Vou fazer um select para ir buscar o id o creation_dt
+        //            SqlCommand cmdGet = new SqlCommand(sqlGetApplication, conn);
+        //            cmdGet.Parameters.AddWithValue("@Name", application.Name);
+
+        //            SqlDataReader reader = cmdGet.ExecuteReader();
+        //            while (reader.Read())
+        //            {
+        //                application.Id = (int)reader["Id"];
+        //                application.Name = (string)reader["Name"];
+        //                application.Creation_dt = (DateTime)reader["Creation_dt"];
+        //            }
+
+        //            reader.Close();
+        //            conn.Close();
+
+        //            handler.AddApplication(application);
+        //            return Content(HttpStatusCode.OK, "Application created successfully", Configuration.Formatters.XmlFormatter);
+        //        }
+        //        return InternalServerError();
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Debug.Print("[DEBUG] 'Exception in Post() in ApplicationController' | " + e.Message);
+
+        //        if (conn.State == System.Data.ConnectionState.Open)
+        //        {
+        //            conn.Close();
+        //        }
+        //        return InternalServerError();
+        //    }
+        //}
 
         //Put method
         [Route("api/somiod/applications/{id}")]
@@ -226,19 +289,19 @@ namespace Middleware.Controllers
             }
         }
 
-        // DELETE: api/Application/1
-        [HttpDelete]
-        [Route("api/somiod/applications/{name}")]
-        public IHttpActionResult DeleteApplication(string name)
-        {
-            Application application = GetApplicationByName(name);
-            if (application != null)
-            {
-                GetApplicationByName(name);
-                return Ok(application);
-            }
-            return NotFound();
-        }
+        //// DELETE: api/Application/1
+        //[HttpDelete]
+        //[Route("api/somiod/applications/{name}")]
+        //public IHttpActionResult DeleteApplication(string name)
+        //{
+        //    Application application = GetApplicationByName(name);
+        //    if (application != null)
+        //    {
+        //        GetApplicationByName(name);
+        //        return Ok(application);
+        //    }
+        //    return NotFound();
+        //}
         
 
         private string GenerateUniqueName()
@@ -246,7 +309,7 @@ namespace Middleware.Controllers
             return "App_" + DateTime.Now.ToString("yyyyMMddHHmmssfff");
         }
 
-
+        /*
         public List<string> DiscoverApplications()
         {
             try
@@ -277,8 +340,8 @@ namespace Middleware.Controllers
                 throw;
             }
         }
-
-        private Application GetApplicationByName(string name)
+        
+        private Application GetApplicationById(int id)
         {
             try
             {
@@ -313,7 +376,7 @@ namespace Middleware.Controllers
                 throw;
             }
         }
-
+        */
         private void UpdateApplication(Application application)
         {
             try
@@ -363,4 +426,6 @@ namespace Middleware.Controllers
             }
         }
     }
+
+    
 }

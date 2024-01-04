@@ -157,10 +157,13 @@
     <None Include="Web.Release.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
-    <None Include="XML\Schemas\somiod.xsd">
+    <None Include="XML\Schema\data.xsd">
       <SubType>Designer</SubType>
     </None>
-    <None Include="XML\Schemas\Subscription.xsd">
+    <None Include="XML\Schema\somiod.xsd">
+		<SubType>Designer</SubType>
+    </None>
+    <None Include="XML\Schema\containers.xsd">
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>
