@@ -228,7 +228,6 @@ namespace Middleware.Controllers
 
                 if (subscription.Id > 0)
                 {
-                    handler.AddSubscription(subscription);
                     return Content(HttpStatusCode.OK, "Subscription added successfully", Configuration.Formatters.XmlFormatter);
                 }
 
@@ -286,7 +285,6 @@ namespace Middleware.Controllers
 
                 if (numRows > 0)
                 {
-                    handler.DeleteSubscription(subscription);
                     return Content(HttpStatusCode.OK, "Subscription delete successfully", Configuration.Formatters.XmlFormatter);
                 }
                 return Content(HttpStatusCode.BadRequest, "Subscription does not exist", Configuration.Formatters.XmlFormatter);

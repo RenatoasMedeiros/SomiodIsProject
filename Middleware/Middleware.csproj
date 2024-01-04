@@ -160,6 +160,9 @@
     <None Include="XML\Schemas\somiod.xsd">
       <SubType>Designer</SubType>
     </None>
+    <None Include="XML\Schemas\Subscription.xsd">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <ItemGroup />
   <PropertyGroup>
