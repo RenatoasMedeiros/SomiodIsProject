@@ -566,30 +566,6 @@ namespace Middleware.Controllers
                 }
                 #endregion
 
-                /*
-                #region Atualizar XML
-                HandlerXML handler = new HandlerXML();
-
-                if (!handler.IsValidXML(requestXML))
-                {
-                    return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
-                }
-
-                if (!handler.IsValidContainerSchema(requestXML))
-                {
-                    return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
-                }
-
-                Container containertoUpdate = new Container
-                {
-                    Id = containerId,
-                    Name = handler.ContainerRequest(),
-                    Parent = containerParent
-                };
-
-                #endregion
-                */
-
                 return Content(HttpStatusCode.OK, "Container Deleted Succefully", Configuration.Formatters.XmlFormatter);
 
             }

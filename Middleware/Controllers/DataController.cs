@@ -62,7 +62,7 @@ namespace Middleware.Controllers
                 {
                     conn.Close();
                 }
-                return data;
+                return InternalServerError();
             }
         }
         #endregion
@@ -258,8 +258,8 @@ namespace Middleware.Controllers
         #region PUT Data
 
         [HttpPut]
-        [Route("api/somiod/{application}/{container}/data/{dataName}")]
-        public IHttpActionResult Put(HttpRequestMessage requestDataToEdit, string dataName)
+        [Route("api/somiod/{application}/{container}/data/{data}")]
+        public IHttpActionResult Put(HttpRequestMessage requestDataToEdit, string data)
         {
 
             if (requestDataToEdit.Content == null)
@@ -294,7 +294,7 @@ namespace Middleware.Controllers
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
                     SqlCommand command = new SqlCommand(queryString, connection);
-                    command.Parameters.AddWithValue("@dataName", dataName);
+                    command.Parameters.AddWithValue("@dataName", data);
                     try
                     {
                         command.Connection.Open();
@@ -323,15 +323,9 @@ namespace Middleware.Controllers
                 }
                 #endregion
 
-                Data dataToEdit = new Data
-                {
-                    Id = dataId,
-                    Name = handler.DataRequest().Name,
-                    Content = handler.DataRequest().Content,
-                    Parent = dataParent
-                };
+                Data dataToEdit = handler.DataRequest();
 
-                string sql = "UPDATE Data SET name = @Name, content = @Content WHERE name = @dataName";
+                string sql = "UPDATE Data SET name = @Name, content = @Content WHERE id = @dataId";
 
                 conn = new SqlConnection(connectionString);
                 conn.Open();
@@ -339,6 +333,7 @@ namespace Middleware.Controllers
 
                 cmd.Parameters.AddWithValue("@Name", dataToEdit.Name);
                 cmd.Parameters.AddWithValue("@Content", dataToEdit.Content);
+                cmd.Parameters.AddWithValue("dataId", dataId);
 
                 int rowsAffected = cmd.ExecuteNonQuery();
                 conn.Close();
@@ -354,7 +349,7 @@ namespace Middleware.Controllers
             }
             catch (Exception ex)
             {
-                Debug.Print("[DEBUG] 'Exception in Put() in DataController' | " + ex.Message);
+                Debug.Print("[DEBUG] 'Exception on Put() method in DataController' | " + ex.Message);
 
                 if (conn.State == System.Data.ConnectionState.Open)
                 {
@@ -367,38 +362,77 @@ namespace Middleware.Controllers
 
         #region DELETE Data
         //Delete data
-        [Route("api/somiod/data/{id}")]
-        public IHttpActionResult Delete(int id)
+        [HttpDelete]
+        [Route("api/somiod/{application}/{container}/data/{dataName}")]
+        public IHttpActionResult Delete(HttpRequestMessage request, string dataName)
         {
-            string sql = "DELETE Data WHERE Id=@id ";
-
-            SqlConnection conn = null;
 
             try
             {
-                conn = new SqlConnection(connectionString);
-                conn.Open();
+                #region Verificar se a data existe
+                int dataId = -1;
+                int dataParent = -1;
+                string sql = "SELECT Id, Parent FROM Data WHERE name = @dataName";
 
-                SqlCommand cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@Id", id);
-
-                int rowsAffected = cmd.ExecuteNonQuery();
-                conn.Close();
-
-                if (rowsAffected > 0)
+                using (SqlConnection connection = new SqlConnection(connectionString))
                 {
-                    return Content(HttpStatusCode.OK, "Data deleted successfully", Configuration.Formatters.XmlFormatter);
+                    SqlCommand command = new SqlCommand(sql, connection);
+                    command.Parameters.AddWithValue("@dataName", dataName);
+                    try
+                    {
+                        command.Connection.Open();
+                        SqlDataReader reader = command.ExecuteReader();
+
+                        if (reader.HasRows)
+                        {
+                            while (reader.Read())
+                            {
+                                dataId = (int)reader["Id"];
+                                dataParent = (int)reader["Parent"];
+                            }
+                            reader.Close();
+                        }
+
+                        if (dataId == -1)
+                            return NotFound();
+
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.Print("[DEBUG] 'Exception on Delete() method in DataController' | " + ex.Message);
+
+                        return InternalServerError();
+                    }
                 }
-                return Content(HttpStatusCode.BadRequest, "Data does not exist", Configuration.Formatters.XmlFormatter);
+                #endregion
+
+                sql = "DELETE FROM Data WHERE Id = @Id";
+                //verificar se container existe
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    SqlCommand command = new SqlCommand(sql, connection);
+                    command.Parameters.AddWithValue("@Id", dataId);
+                    try
+                    {
+                        command.Connection.Open();
+                        int rows = command.ExecuteNonQuery();
+                        if (rows < 0)
+                            return InternalServerError();
+
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.Print("[DEBUG] 'Exception on Delete() method in DataController' | " + ex.Message);
+
+                        return InternalServerError();
+                    }
+                }
+
+                return Content(HttpStatusCode.OK, "Data Deleted Succefully", Configuration.Formatters.XmlFormatter);
             }
             catch (Exception ex)
             {
-                Debug.Print("[DEBUG] 'Exception in Delete() in DataController' | " + ex.Message);
-
-                if (conn.State == System.Data.ConnectionState.Open)
-                {
-                    conn.Close();
-                }
+                Debug.Print("[DEBUG] 'Exception on Delete() method in DataController' | " + ex.Message);
                 return InternalServerError();
             }
         }
