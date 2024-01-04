@@ -239,69 +239,6 @@ namespace Middleware.XML
             return subscription;
         }
 
-        public void AddSubscription(Subscription subscription)
-        {
-            XmlDocument doc = new XmlDocument();
-            doc.Load(XmlFilePath);
-            XmlNode nodeSubscriptions = doc.SelectSingleNode("//applications/application/containers/container[id='" + subscription.Parent + "']/subscriptions");
-
-            //Inserir tag <containers>
-            if (nodeSubscriptions == null)
-            {
-                nodeSubscriptions = doc.CreateElement("subscriptions");
-                doc.SelectSingleNode("//applications/application/containers/container[id='" + subscription.Parent + "']").AppendChild(nodeSubscriptions);
-            }
-
-            //Inserir tag <container>
-            XmlNode xmlSubscription = doc.CreateElement("subscription");
-
-            XmlNode nodeAux = doc.CreateElement("id");
-            nodeAux.InnerText = subscription.Id.ToString();
-            xmlSubscription.AppendChild(nodeAux);
-
-            nodeAux = doc.CreateElement("creation_dt");
-            nodeAux.InnerText = subscription.Creation_dt.ToString();
-            xmlSubscription.AppendChild(nodeAux);
-
-            nodeAux = doc.CreateElement("name");
-            nodeAux.InnerText = subscription.Name;
-            xmlSubscription.AppendChild(nodeAux);
-
-            nodeAux = doc.CreateElement("parent");
-            nodeAux.InnerText = subscription.Parent.ToString();
-            xmlSubscription.AppendChild(nodeAux);
-
-            nodeAux = doc.CreateElement("event");
-            nodeAux.InnerText = subscription.Event.ToString();
-            xmlSubscription.AppendChild(nodeAux);
-
-            nodeAux = doc.CreateElement("endpoint");
-            nodeAux.InnerText = subscription.Endpoint.ToString();
-            xmlSubscription.AppendChild(nodeAux);
-
-            doc.SelectSingleNode("//applications/application/containers/container[id='" + subscription.Parent + "']/subscriptions").AppendChild(xmlSubscription);
-
-            doc.Save(XmlFilePath);
-        }
-
-        public void DeleteSubscription(Subscription subscription)
-        {
-
-            XmlDocument doc = new XmlDocument();
-            doc.Load(XmlFilePath);
-            XmlNode subs = doc.SelectSingleNode("//containers[id ='" + subscription.Parent + "']/subscriptions");
-            int numSubs = subs.ChildNodes.Count;
-            XmlNode node = doc.SelectSingleNode("//subscriptions[id ='" + subscription.Id + "']");
-            node.ParentNode.RemoveChild(node);
-            if (numSubs == 1)
-            {
-                subs.ParentNode.RemoveChild(subs);
-            }
-            doc.Save(XmlFilePath);
-
-            Debug.Print("[DEBUG] 'Subscriptions delete with success' | DeleteSubscription() in HandlerXML");
-        }
-
         #endregion
 
         #region Compare XML with XML Schema (xsd)

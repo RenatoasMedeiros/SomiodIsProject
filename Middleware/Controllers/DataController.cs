@@ -23,7 +23,7 @@ namespace Middleware.Controllers
 
         [HttpGet]
         [Route("api/somiod/{application}/data")]
-        public IEnumerable<Data> GetAllData(string application)
+        public HttpResponseMessage GetAllData(string application)
         {
             List<Data> data = new List<Data>();
             string sql = "SELECT d.* FROM Data d " +
@@ -51,7 +51,10 @@ namespace Middleware.Controllers
                 reader.Close();
                 conn.Close();
 
-                return data;
+                var response = Request.CreateResponse(HttpStatusCode.OK, data);
+                response.Content = new ObjectContent<List<Data>>(data, new System.Net.Http.Formatting.XmlMediaTypeFormatter());
+
+                return response;
 
             }
             catch (Exception ex)
@@ -62,7 +65,8 @@ namespace Middleware.Controllers
                 {
                     conn.Close();
                 }
-                return InternalServerError();
+                var errorResponse = Request.CreateErrorResponse(HttpStatusCode.InternalServerError, "An error occurred while fetching data.");
+                return errorResponse;
             }
         }
         #endregion
@@ -71,7 +75,7 @@ namespace Middleware.Controllers
 
         [HttpGet]
         [Route("api/somiod/{application}/{container}/{dataName}/data")]
-        public IHttpActionResult GetDatabyName(string dataName)
+        public HttpResponseMessage GetDatabyName(string dataName)
         {
             Data data = new Data();
             string sql = "SELECT * FROM Data WHERE name = @DataName";
@@ -101,13 +105,17 @@ namespace Middleware.Controllers
                     reader.Close();
                     conn.Close();
 
-                    return Ok(data);
+                    var response = Request.CreateResponse(HttpStatusCode.OK, data);
+                    response.Content = new ObjectContent<Data>(data, new System.Net.Http.Formatting.XmlMediaTypeFormatter());
+
+                    return response;
                 }
                 else
                 {
                     reader.Close();
                     conn.Close();
-                    return NotFound();
+                    var errorResponse = Request.CreateErrorResponse(HttpStatusCode.NotFound, "An error occurred while fetching data.");
+                    return errorResponse;
                 }
             }
             catch (Exception ex)
@@ -118,7 +126,8 @@ namespace Middleware.Controllers
                 {
                     conn.Close();
                 }
-                return InternalServerError();
+                var errorResponse = Request.CreateErrorResponse(HttpStatusCode.InternalServerError, "An error occurred while fetching data.");
+                return errorResponse;
             }
 
         }

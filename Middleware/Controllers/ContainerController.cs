@@ -297,7 +297,7 @@ namespace Middleware.Controllers
                             {
                                 container.Id = (int)reader["Id"];
                             }
-                            handler.AddContainer(container);
+
                             reader.Close();
                         }
                         connection.Close();
@@ -312,7 +312,6 @@ namespace Middleware.Controllers
                         return InternalServerError();
                     }
                 }
-
             }
             catch (Exception ex)
             {
@@ -320,8 +319,6 @@ namespace Middleware.Controllers
                 Console.WriteLine($"Error discovering resources: {ex.Message}");
                 return InternalServerError();
             }
-
-
         }
 
         // PUT Container Alterar rotas
@@ -424,7 +421,6 @@ namespace Middleware.Controllers
                         if (rows < 0)
                             return NotFound();
 
-                        handler.UpdateContainer(containertoUpdate);
                         return Ok();
                     }
                     catch (Exception ex)
