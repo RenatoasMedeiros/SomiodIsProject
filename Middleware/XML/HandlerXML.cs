@@ -20,18 +20,18 @@ namespace Middleware.XML
         public string XsdFilePathApplications { get; set; }
         public string XsdFilePathContainers { get; set; }
         public string XsdFilePathData { get; set; }
-        public string XsdFileSubscriptions { get; set; }
+        public string XsdFilePathSubscriptions { get; set; }
         public string XsdFilePathSomiod { get; set; }
 
         public HandlerXML()
         {
             XmlFileTempPath = HostingEnvironment.MapPath("~/XML/Files/temp.xml");
 
-            XmlFilePath = HostingEnvironment.MapPath("~/XML/Files/applications.xml");
-
             XsdFilePathApplications = HostingEnvironment.MapPath("~/XML/Schema/application.xsd");
 
             XsdFilePathData = HostingEnvironment.MapPath("~/XML/Schema/data.xsd");
+
+            XsdFilePathSubscriptions = HostingEnvironment.MapPath("~/XML/Schema/Subscription.xsd");
         }
 
 
@@ -155,34 +155,8 @@ namespace Middleware.XML
 
         #region XML Subscriptions handler
 
-        // Faz tratamento dos dados do request retorna uma nova subscription 
-        public Subscription SubscriptionRequest()
-        {
-            XmlDocument doc = new XmlDocument();
-            Subscription subscription = new Subscription();
-            doc.Load(XmlFileTempPath);
 
-            XmlNode node = doc.SelectSingleNode("//somiod/subscription");
-            if (node.SelectSingleNode("name") != null)
-            {
-                subscription.Name = node.SelectSingleNode("name").InnerText;
-            }
-
-            if (node.SelectSingleNode("event") != null)
-            {
-                subscription.Event = node.SelectSingleNode("event").InnerText;
-            }
-
-            if (node.SelectSingleNode("endpoint") != null)
-            {
-                subscription.Endpoint = node.SelectSingleNode("endpoint").InnerText;
-            }
-
-            RefreshTempFile();
-            return subscription;
-        }
-
-        public bool IsValidSubscriptionsSchemaXML(string rawXml)
+        public bool ValidateSubscriptionsSchemaXML(string rawXml)
         {
             XmlDocument docTemp = new XmlDocument();
             docTemp.Load(XmlFileTempPath);
@@ -193,7 +167,7 @@ namespace Middleware.XML
             docTemp.Save(XmlFileTempPath);
 
             // If valid Schema in XML 
-            if (ValidateXML(XmlFileTempPath, XsdFileSubscriptions))
+            if (ValidateXML(XmlFileTempPath, XsdFilePathSubscriptions))
             {
                 return true;
             }

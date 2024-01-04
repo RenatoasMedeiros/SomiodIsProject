@@ -56,7 +56,7 @@ namespace Middleware.Controllers
 
             string teste = Request.Content.ToString();
             //Retiro todos os caracteres e espaços desnecessários
-            string rawXml = request.Content.ReadAsStringAsync().Result
+            string rawXml = Request.Content.ReadAsStringAsync().Result
                 .Replace(System.Environment.NewLine, String.Empty);
 
             //Verifico se a string que veio do request é XML

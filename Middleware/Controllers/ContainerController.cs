@@ -26,6 +26,7 @@ namespace Middleware.Controllers
 
             List<Container> containers = new List<Container>();
             #region Verificar Header
+
             var discoverHeader = Request.Headers.GetValues("somiod-discover");
 
             if (discoverHeader == null || !discoverHeader.Contains("container"))
