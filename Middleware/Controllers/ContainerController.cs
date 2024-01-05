@@ -2,10 +2,14 @@
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Web.Http;
+using System.Xml;
+using System.Xml.Serialization;
 using Middleware.Models;
 using Middleware.XML;
 using static System.Net.Mime.MediaTypeNames;
@@ -21,7 +25,7 @@ namespace Middleware.Controllers
         //Return XML
         [HttpGet]
         [Route("api/somiod/applications/{application}/containers")]
-        public IEnumerable<Container> GetAllContainers([FromUri] string application){
+        public HttpResponseMessage GetAllContainers([FromUri] string application){
 
             List<Container> containers = new List<Container>();
             #region Verificar Header
@@ -29,7 +33,7 @@ namespace Middleware.Controllers
 
             if (discoverHeader == null || !discoverHeader.Contains("container"))
             {
-                return containers;
+                return Request.CreateResponse(HttpStatusCode.BadRequest, "Error - There was an error in the Request");
             }
             #endregion
 
@@ -56,7 +60,7 @@ namespace Middleware.Controllers
                 }
                 catch (Exception ex)
                 {
-                    return (IEnumerable<Container>)ex;
+                    return Request.CreateResponse(HttpStatusCode.InternalServerError, "Error - There was an error : " + ex);
                 }
 
                 queryString = "SELECT * FROM Containers WHERE parent = @Parent";
@@ -71,17 +75,41 @@ namespace Middleware.Controllers
                     {
                         Container c = new Container
                         {
-                            Id = (int)reader["Id"],
                             Name = (string)reader["Name"],
-                            Creation_dt = (DateTime)reader["Creation_dt"],
-                            Parent = (int)reader["Parent"]
                         };
                         containers.Add(c);
 
                     }
                     reader.Close();
                     connection.Close();
-                    return containers;
+                    
+                    var response = Request.CreateResponse(HttpStatusCode.OK, containers);
+                    response.Content = new ObjectContent<List<Container>>(containers, new System.Net.Http.Formatting.XmlMediaTypeFormatter());
+                    
+                    
+                    using (var writer = new StringWriter())
+                    {
+                        var serializer = new XmlSerializer(typeof(List<Container>));
+                        serializer.Serialize(writer, containers);
+                        var xmlString = writer.ToString();
+
+                        var xmlDoc = new XmlDocument();
+                        xmlDoc.LoadXml(xmlString);
+
+                        foreach (XmlNode container in xmlDoc.SelectNodes("//Container"))
+                        {
+                            container.RemoveChild(container.SelectSingleNode("Id"));
+                            container.RemoveChild(container.SelectSingleNode("Creation_dt"));
+                            container.RemoveChild(container.SelectSingleNode("Parent"));
+                        }
+
+                        
+                        response.Content = new StringContent(xmlDoc.OuterXml, Encoding.UTF8, "application/xml");
+                    }
+
+
+
+                    return response;
                 }
                 catch (Exception ex)
                 {
@@ -89,7 +117,7 @@ namespace Middleware.Controllers
                     {
                         connection.Close();
                     }
-                    return containers;
+                    return Request.CreateResponse(HttpStatusCode.InternalServerError, "Error - There was an error : " + ex);
                 }
             }
 
