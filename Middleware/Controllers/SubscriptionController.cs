@@ -67,7 +67,7 @@ namespace Middleware.Controllers
         }
         #endregion
 
-        #region CRUDS
+        #region POST
 
         // create new subscription.
         [HttpPost]
@@ -241,15 +241,17 @@ namespace Middleware.Controllers
                 return InternalServerError();
             }
         }
+        #endregion
 
+        #region DELETE
 
         //Delete method
-        [Route("api/somiod/subscriptions/{id}")]
-        public IHttpActionResult Delete(int id)
+        [Route("api/somiod/subscriptions/{name}")]
+        public IHttpActionResult Delete(string name)
         {
             HandlerXML handler = new HandlerXML();
-            string sqlGetSubscription = "SELECT * FROM Subscriptions WHERE Id = @Id";
-            string sql = "DELETE FROM Subscriptions WHERE Id = @Id";
+            string sqlGetSubscription = "SELECT * FROM Subscriptions WHERE Name = @Name";
+            string sql = "DELETE FROM Subscriptions WHERE Name = @Name";
             Subscription subscription = new Subscription();
 
             SqlConnection conn = null;
@@ -260,7 +262,7 @@ namespace Middleware.Controllers
                 conn.Open();
 
                 SqlCommand cmdGetSubscription = new SqlCommand(sqlGetSubscription, conn);
-                cmdGetSubscription.Parameters.AddWithValue("@Id", id);
+                cmdGetSubscription.Parameters.AddWithValue("@Name", name);
                 SqlDataReader reader = cmdGetSubscription.ExecuteReader();
                 while (reader.Read())
                 {
@@ -274,14 +276,15 @@ namespace Middleware.Controllers
                 reader.Close();
 
                 SqlCommand cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@Id", id);
+                cmd.Parameters.AddWithValue("@Name", name);
 
+                // Numero de linhas afetadas.
                 int numRows = cmd.ExecuteNonQuery();
                 conn.Close();
 
                 if (numRows > 0)
                 {
-                    return Content(HttpStatusCode.OK, "Subscription delete successfully", Configuration.Formatters.XmlFormatter);
+                    return Content(HttpStatusCode.OK, "Subscription deleted successfully", Configuration.Formatters.XmlFormatter);
                 }
                 return Content(HttpStatusCode.BadRequest, "Subscription does not exist", Configuration.Formatters.XmlFormatter);
             }
