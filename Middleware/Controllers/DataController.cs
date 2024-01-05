@@ -215,41 +215,110 @@ namespace Middleware.Controllers
 
             newData.Parent = containerId;
 
-            //newData.Parent = containerId;
-
             // Para fazer o MQTT:
 
             // SELECT subscription baseado no containerId
 
-            // erro se não houver subscriptions
+            List<Subscription> subscriptions = new List<Subscription>();
+            string sqlSelectSubscriptions = "SELECT * From Subscriptions WHERE Parent = @ParentId AND event = '1'";
 
-            // Para cada subscription existente faz um publish MQTT da data
-
-            // Ao fazer o POST, logo de seguida e verificar a resposta OK ou Unternal Server 
-
-            string sqlInsert = "INSERT INTO Data (name, content, creation_dt, parent) VALUES (@name, @content, GETDATE(), @parent)";
+            SqlConnection conn = null;
 
             try
             {
                 conn = new SqlConnection(connectionString);
                 conn.Open();
-                SqlCommand cmd = new SqlCommand(sqlInsert, conn);
-
-                cmd.Parameters.AddWithValue("@name", newData.Name);
-                cmd.Parameters.AddWithValue("@content", newData.Content);
-                cmd.Parameters.AddWithValue("@parent", newData.Parent);
-
-                int rowsAffected = cmd.ExecuteNonQuery();
+                SqlCommand cmd = new SqlCommand(sqlSelectSubscriptions, conn);
+                cmd.Parameters.AddWithValue("@ParentId", containerId);
+                SqlDataReader reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    Subscription subscription = new Subscription();
+                    subscription.Id = (int)readerSubscriptions["Id"];
+                    subscription.Name = (string)readerSubscriptions["Name"];
+                    subscription.Creation_dt = (DateTime)readerSubscriptions["Creation_dt"];
+                    subscription.Parent = (int)readerSubscriptions["Parent"];
+                    subscription.Endpoint = (string)readerSubscriptions["Endpoint"];
+                    subscription.Event = (string)readerSubscriptions["Event"];
+                    subscriptions.Add(subscription);
+                }
+                reader.Close();
                 conn.Close();
 
-                if (rowsAffected > 0)
+                // erro se não houver subscriptions
+                if (subscriptions.Count == 0)
                 {
-                    return Ok();
+                    return BadRequest();
+                }
+                else
+                {
+                    // Para cada subscription que esteja à espera de um creation (event = 1) faz um publish MQTT da data
+                    foreach (Subscription subscription in subscriptions)
+                    {
+                        Thread thread = new Thread(() =>
+                        {
+                            MqttClient mosquittoClient;
+
+                            try
+                            {
+                                mosquittoClient = new MqttClient(subscription.Endpoint);
+
+                                if (mosquittoClient.IsConnected)
+                                {
+                                    // dar disconnect, caso ele já esteja anteriormente ligado
+                                    mosquittoClient.Disconnect();
+                                }
+
+                                mosquittoClient.Connect(Guid.NewGuid().ToString());
+
+
+                                // alterar o publish
+                                mosquittoClient.Publish(subscription.Name + "/creation", Encoding.UTF8.GetBytes("'" + newData.Content + "'  (" + subscription.Endpoint + " - " + subscription.Name + "/creation) - " + DateTime.Now));
+
+                            }
+                            catch (Exception)
+                            {
+                                Debug.Print("Error trying to connect to: " + subscription.Endpoint);
+                            }
+                        });
+                        thread.Start();
+                    }
                 }
 
-                return InternalServerError();
-            }
-            catch (Exception ex)
+                string sqlInsert = "INSERT INTO Data (name, content, creation_dt, parent) VALUES (@name, @content, GETDATE(), @parent)";
+
+                try
+                {
+                    conn = new SqlConnection(connectionString);
+                    conn.Open();
+                    SqlCommand cmd = new SqlCommand(sqlInsert, conn);
+
+                    cmd.Parameters.AddWithValue("@name", newData.Name);
+                    cmd.Parameters.AddWithValue("@content", newData.Content);
+                    cmd.Parameters.AddWithValue("@parent", newData.Parent);
+
+                    int rowsAffected = cmd.ExecuteNonQuery();
+                    conn.Close();
+
+                    if (rowsAffected > 0)
+                    {
+                        return Ok();
+                    }
+
+                    return InternalServerError();
+                }
+                catch (Exception ex)
+                {
+                    Debug.Print("[DEBUG] 'Exception on Post() method in DataController' | " + ex.Message);
+
+                    if (conn.State == System.Data.ConnectionState.Open)
+                    {
+                        conn.Close();
+                    }
+                    return InternalServerError();
+                }
+
+            } catch (Exception ex)
             {
                 Debug.Print("[DEBUG] 'Exception on Post() method in DataController' | " + ex.Message);
 
@@ -259,9 +328,10 @@ namespace Middleware.Controllers
                 }
                 return InternalServerError();
             }
+
+            
         }
         #endregion
-
 
         #region PUT Data
 
