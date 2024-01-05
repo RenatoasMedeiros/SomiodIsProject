@@ -7,11 +7,13 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Web.Http;
 using System.Xml;
 using System.Xml.Serialization;
 using Middleware.Models;
 using Middleware.XML;
+using Swashbuckle.Swagger;
 using static System.Net.Mime.MediaTypeNames;
 
 
@@ -83,10 +85,9 @@ namespace Middleware.Controllers
                     reader.Close();
                     connection.Close();
                     
-                    var response = Request.CreateResponse(HttpStatusCode.OK, containers);
-                    response.Content = new ObjectContent<List<Container>>(containers, new System.Net.Http.Formatting.XmlMediaTypeFormatter());
-                    
-                    
+                    var response = Request.CreateResponse(HttpStatusCode.OK);
+
+
                     using (var writer = new StringWriter())
                     {
                         var serializer = new XmlSerializer(typeof(List<Container>));
@@ -96,18 +97,14 @@ namespace Middleware.Controllers
                         var xmlDoc = new XmlDocument();
                         xmlDoc.LoadXml(xmlString);
 
-                        foreach (XmlNode container in xmlDoc.SelectNodes("//Container"))
+                        foreach (XmlNode containerNode in xmlDoc.SelectNodes("//Container"))
                         {
-                            container.RemoveChild(container.SelectSingleNode("Id"));
-                            container.RemoveChild(container.SelectSingleNode("Creation_dt"));
-                            container.RemoveChild(container.SelectSingleNode("Parent"));
+                            containerNode.RemoveChild(containerNode.SelectSingleNode("Id"));
+                            containerNode.RemoveChild(containerNode.SelectSingleNode("Creation_dt"));
+                            containerNode.RemoveChild(containerNode.SelectSingleNode("Parent"));
                         }
-
-                        
                         response.Content = new StringContent(xmlDoc.OuterXml, Encoding.UTF8, "application/xml");
                     }
-
-
 
                     return response;
                 }
@@ -158,7 +155,7 @@ namespace Middleware.Controllers
         //Return XML
         [HttpGet]
         [Route("api/somiod/applications/{application}/containers/{container}")]
-        public IHttpActionResult GetContainer([FromUri] string container)
+        public HttpResponseMessage GetContainer([FromUri] string container)
         {
 
             //encontrar o parent para adicionar à query 
@@ -182,10 +179,7 @@ namespace Middleware.Controllers
                     {
                         containerToFind = new Container();
                         {
-                            containerToFind.Id = (int)reader["Id"];
                             containerToFind.Name = (string)reader["Name"];
-                            containerToFind.Creation_dt = (DateTime)reader["Creation_dt"];
-                            containerToFind.Parent = (int)reader["Parent"];
                         };
                     }
                 }
@@ -194,9 +188,30 @@ namespace Middleware.Controllers
 
                 if (containerToFind == null)
                 {
-                    return NotFound();
+                    return Request.CreateResponse(HttpStatusCode.NotFound, "Error - There was an error Finding the container");
                 }
-                return Ok(containerToFind);
+
+                var response = Request.CreateResponse(HttpStatusCode.OK);
+
+                using (var writer = new StringWriter())
+                {
+                    var serializer = new XmlSerializer(typeof(Container));
+                    serializer.Serialize(writer, containerToFind);
+                    var xmlString = writer.ToString();
+
+                    var xmlDoc = new XmlDocument();
+                    xmlDoc.LoadXml(xmlString);
+
+                    foreach (XmlNode containerNode in xmlDoc.SelectNodes("//Container"))
+                    {
+                        containerNode.RemoveChild(containerNode.SelectSingleNode("Id"));
+                        containerNode.RemoveChild(containerNode.SelectSingleNode("Creation_dt"));
+                        containerNode.RemoveChild(containerNode.SelectSingleNode("Parent"));
+                    }
+                    response.Content = new StringContent(xmlDoc.OuterXml, Encoding.UTF8, "application/xml");
+                }
+
+                return response;
             }
             catch (Exception)
             {
@@ -205,7 +220,7 @@ namespace Middleware.Controllers
                 {
                     conn.Close();
                 }
-                return NotFound();
+                return Request.CreateResponse(HttpStatusCode.NotFound, "Error - There was an error ");
             }
         }
 
@@ -325,7 +340,7 @@ namespace Middleware.Controllers
                             {
                                 container.Id = (int)reader["Id"];
                             }
-                            //handler.AddContainer(container);
+
                             reader.Close();
                         }
                         connection.Close();
@@ -452,7 +467,6 @@ namespace Middleware.Controllers
                         if (rows < 0)
                             return NotFound();
 
-                        //handler.UpdateContainer(containertoUpdate);
                         return Content(HttpStatusCode.OK, "Container Updated Succefully", Configuration.Formatters.XmlFormatter);
                     }
                     catch (Exception ex)
@@ -549,7 +563,6 @@ namespace Middleware.Controllers
                 }
                 #endregion
 
-
                 #region Apagar Subscriptions do Container
 
                 queryString = "DELETE FROM Subscriptions WHERE parent = @Id";
@@ -594,30 +607,6 @@ namespace Middleware.Controllers
                     }
                 }
                 #endregion
-
-                /*
-                #region Atualizar XML
-                HandlerXML handler = new HandlerXML();
-
-                if (!handler.IsValidXML(requestXML))
-                {
-                    return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
-                }
-
-                if (!handler.IsValidContainerSchema(requestXML))
-                {
-                    return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
-                }
-
-                Container containertoUpdate = new Container
-                {
-                    Id = containerId,
-                    Name = handler.ContainerRequest(),
-                    Parent = containerParent
-                };
-
-                #endregion
-                */
 
                 return Content(HttpStatusCode.OK, "Container Deleted Succefully", Configuration.Formatters.XmlFormatter);
 
