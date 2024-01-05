@@ -19,7 +19,7 @@ namespace Middleware.XML
         public string XsdFilePathApplications { get; set; }
         public string XsdFilePathContainers { get; set; }
         public string XsdFilePathData { get; set; }
-        public string XsdFileSubscriptions { get; set; }
+        public string XsdFilePathSubscriptions { get; set; }
         public string XsdFilePathSomiod { get; set; }
 
         public HandlerXML()
@@ -29,6 +29,8 @@ namespace Middleware.XML
             XsdFilePathApplications = HostingEnvironment.MapPath("~/XML/Schema/application.xsd");
 
             XsdFilePathData = HostingEnvironment.MapPath("~/XML/Schema/data.xsd");
+
+            XsdFilePathSubscriptions = HostingEnvironment.MapPath("~/XML/Schema/subscription.xsd");
         }
 
 
@@ -44,6 +46,13 @@ namespace Middleware.XML
             XmlNode node = docTemp.SelectSingleNode("//somiod");
 
             node.InnerXml += rawXml;
+
+            XmlNode resType = docTemp.SelectSingleNode("//res_type");
+
+            if (resType.InnerText != "application")
+                return false;
+
+            docTemp.LastChild.FirstChild.RemoveChild(resType);
 
             docTemp.Save(XmlFileTempPath);
 
@@ -70,71 +79,57 @@ namespace Middleware.XML
             return appName;
         }
 
-        public void AddApplication(Application application)
+        #endregion
+
+        #region XML Containers handler
+        // funções para os containers
+
+        #endregion
+
+        #region XML Data handler
+        // funções para os datas
+
+        #endregion
+
+        #region XML Subscriptions handler
+
+
+        public bool ValidateSubscriptionsSchemaXML(string rawXml)
         {
-            XmlDocument docDefinitive = new XmlDocument();
-            docDefinitive.Load(XmlFilePath);
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+            XmlNode node = docTemp.SelectSingleNode("//somiod");
 
-            XmlNode node = docDefinitive.CreateElement("application");
+            node.InnerXml += rawXml;
 
-            XmlNode nodeAux = docDefinitive.CreateElement("id");
-            nodeAux.InnerText = application.Id.ToString();
-            node.AppendChild(nodeAux);
+            docTemp.Save(XmlFileTempPath);
 
-            nodeAux = docDefinitive.CreateElement("creation_dt");
-            nodeAux.InnerText = application.Creation_dt.ToString();
-            node.AppendChild(nodeAux);
+            // If valid Schema in XML 
+            if (ValidateXML(XmlFileTempPath, XsdFilePathSubscriptions))
+            {
+                return true;
+            }
 
-            nodeAux = docDefinitive.CreateElement("name");
-            nodeAux.InnerText = application.Name;
-            node.AppendChild(nodeAux);
-
-            docDefinitive.SelectSingleNode("//applications").AppendChild(node);
-
-            docDefinitive.Save(XmlFilePath);
-            Debug.Print("[DEBUG] 'Applications inserted with success' | AddApplication() in HandlerXML");
+            Debug.Print("[DEBUG] 'Invalid Schema in XML' | IsValidSubscriptionsSchemaXML() in HandlerXML");
+            RefreshTempFile();
+            return false;
         }
 
-        public void UpdateApplication(Application application)
+
+        #endregion
+
+        #region Compare XML with XML Schema (xsd)
+
+        public string ContainerRequest()
         {
-            XmlDocument docDefinitive = new XmlDocument();
-            docDefinitive.Load(XmlFilePath);
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
 
-            XmlNode node = docDefinitive.SelectSingleNode($"//applications/application[id ='{application.Id}']");
+            string container = docTemp.SelectSingleNode("//somiod/container/name").InnerText;
 
-            if (node != null)
-            {
-                node.SelectSingleNode("name").InnerText = application.Name;
+            RefreshTempFile();
 
-                docDefinitive.Save(XmlFilePath);
-
-                Debug.Print("[DEBUG] 'Applications update with success' | UpdateApplication() in HandlerXML");
-            }
-            else
-            {
-                Debug.Print("[DEBUG] 'Application not found' | UpdateApplication() in HandlerXML");
-            }
-        }
-
-        public void DeleteApplication(Application application)
-        {
-            XmlDocument docDefinitive = new XmlDocument();
-            docDefinitive.Load(XmlFilePath);
-
-            XmlNode node = docDefinitive.SelectSingleNode($"//applications/application[id ='{application.Id}']");
-
-            if (node != null)
-            {
-                docDefinitive.DocumentElement.RemoveChild(node);
-
-                docDefinitive.Save(XmlFilePath);
-
-                Debug.Print("[DEBUG] 'Applications delete with success' | DeleteApplication() in HandlerXML");
-            }
-            else
-            {
-                Debug.Print("[DEBUG] 'Application not found' | DeleteApplication() in HandlerXML");
-            }
+            return container;
         }
 
 

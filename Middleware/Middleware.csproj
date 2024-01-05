@@ -156,6 +156,9 @@
     <None Include="Web.Release.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
+    <None Include="XML\Schema\containers.xsd">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="XML\Schema\data.xsd">
       <SubType>Designer</SubType>
     </None>

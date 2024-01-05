@@ -244,7 +244,6 @@ namespace Middleware.Controllers
 
                 if (rowsAffected > 0)
                 {
-                    
                     return Ok();
                 }
 

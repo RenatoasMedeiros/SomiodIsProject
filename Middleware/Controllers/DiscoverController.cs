@@ -13,41 +13,37 @@ namespace Middleware.Controllers
     {
         string connectionString = Properties.Settings.Default.ConnStr;
 
-        ApplicationController applicationController = new ApplicationController();
-        ContainerController containerController = new ContainerController();
-
-
-        [HttpGet]
-        [Route("api/somiod/applications/{application}")]
-        public IHttpActionResult DiscoverResources()
+        private List<string> DiscoverContainers()
         {
             try
             {
-                // Check if the somiod-discover header is present
-                var discoverHeader = Request.Headers.GetValues("somiod-discover");
-
-                if (discoverHeader != null && discoverHeader.Contains("application"))
+                using (SqlConnection connection = new SqlConnection(connectionString))
                 {
-                    // Discover applications
-                    //List<string> applicationNames = applicationController.DiscoverApplications();
-                    return Ok();//(applicationNames);
-                }
-                else if (discoverHeader != null && discoverHeader.Contains("container"))
-                {
-                    // Discover containers
-                    return Ok(containerController.DiscoverContainers());
-                }
-                // Add similar logic for other resource types (data, subscription)
+                    connection.Open();
 
-                // Default case: Invalid or missing somiod-discover header
-                return BadRequest("Invalid or missing somiod-discover header.");
+                    // Your implementation to return a list of container names
+                    using (SqlCommand cmd = new SqlCommand("SELECT Name FROM Containers", connection))
+                    {
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            List<string> containerNames = new List<string>();
+                            while (reader.Read())
+                            {
+                                containerNames.Add((string)reader["Name"]);
+                            }
+                            return containerNames;
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
                 // Handle exceptions
-                Console.WriteLine($"Error discovering resources: {ex.Message}");
-                return InternalServerError();
+                Console.WriteLine($"Error discovering containers: {ex.Message}");
+                throw;
             }
         }
+
+        // Add similar methods for other resource types (application, data, subscription)
     }
 }

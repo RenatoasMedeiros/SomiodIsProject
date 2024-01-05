@@ -34,7 +34,6 @@ namespace Middleware.Controllers
             }
             #endregion
 
-            
             int parentId = -1;
             string queryString = "SELECT Id FROM Applications WHERE name = @name";
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -97,7 +96,6 @@ namespace Middleware.Controllers
             }
 
         }
-    
 
         public List<string> DiscoverContainers()
         {
