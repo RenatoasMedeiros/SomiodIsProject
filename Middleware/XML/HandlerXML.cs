@@ -1,57 +1,43 @@
 ﻿
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
-using System.Xml.Schema;
-using System.Xml;
 using Middleware.Models;
+using System;
 using System.Diagnostics;
 using System.Web.Hosting;
+using System.Xml;
+using System.Xml.Schema;
+
+
 
 namespace Middleware.XML
 {
     public class HandlerXML
     {
-
         private bool isValid = true;
+
         private string validationMessage;
         public string XmlFileTempPath { get; set; }
         public string XmlFilePath { get; set; }
         public string XsdFilePathApplications { get; set; }
+        public string XsdFilePathContainers { get; set; }
+        public string XsdFilePathData { get; set; }
+        public string XsdFilePathSubscriptions { get; set; }
+        public string XsdFilePathSomiod { get; set; }
+
         public HandlerXML()
         {
             XmlFileTempPath = HostingEnvironment.MapPath("~/XML/Files/temp.xml");
 
-            XmlFilePath = HostingEnvironment.MapPath("~/XML/Files/applications.xml");
-
             XsdFilePathApplications = HostingEnvironment.MapPath("~/XML/Schema/application.xsd");
 
+            XsdFilePathData = HostingEnvironment.MapPath("~/XML/Schema/data.xsd");
+
+            XsdFilePathSubscriptions = HostingEnvironment.MapPath("~/XML/Schema/subscription.xsd");
         }
 
-
-        #region XML Subscriptions handler
-
-        public void DeleteSubscription(Subscription subscription)
-        {
-
-            XmlDocument doc = new XmlDocument();
-            doc.Load(XmlFilePath);
-            XmlNode subs = doc.SelectSingleNode("//containers[id ='" + subscription.Parent + "']/subscriptions");
-            int numSubs = subs.ChildNodes.Count;
-            XmlNode node = doc.SelectSingleNode("//subscriptions[id ='" + subscription.Id + "']");
-            node.ParentNode.RemoveChild(node);
-            if (numSubs == 1)
-            {
-                subs.ParentNode.RemoveChild(subs);
-            }
-            doc.Save(XmlFilePath);
-
-            Debug.Print("[DEBUG] 'Subscriptions delete with success' | DeleteSubscription() in HandlerXML");
-        }
-        #endregion
 
         #region XML Application handler
+
+        // Funções para as applications
 
         public bool IsValidApplicationSchemaXML(string rawXml)
         {
@@ -61,6 +47,13 @@ namespace Middleware.XML
             XmlNode node = docTemp.SelectSingleNode("//somiod");
 
             node.InnerXml += rawXml;
+
+            XmlNode resType = docTemp.SelectSingleNode("//res_type");
+
+            if (resType.InnerText != "application")
+                return false;
+
+            docTemp.LastChild.FirstChild.RemoveChild(resType);
 
             docTemp.Save(XmlFileTempPath);
 
@@ -87,76 +80,146 @@ namespace Middleware.XML
             return appName;
         }
 
-        public void AddApplication(Application application)
+        #endregion
+
+        #region XML Containers handler
+        // funções para os containers
+
+        #endregion
+
+        #region XML Data handler
+        // funções para os datas
+
+        #endregion
+
+        #region XML Subscriptions handler
+
+
+        public bool ValidateSubscriptionsSchemaXML(string rawXml)
         {
-            XmlDocument docDefinitive = new XmlDocument();
-            docDefinitive.Load(XmlFilePath);
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+            XmlNode node = docTemp.SelectSingleNode("//somiod");
 
-            XmlNode node = docDefinitive.CreateElement("application");
+            node.InnerXml += rawXml;
 
-            XmlNode nodeAux = docDefinitive.CreateElement("id");
-            nodeAux.InnerText = application.Id.ToString();
-            node.AppendChild(nodeAux);
+            docTemp.Save(XmlFileTempPath);
 
-            nodeAux = docDefinitive.CreateElement("creation_dt");
-            nodeAux.InnerText = application.Creation_dt.ToString();
-            node.AppendChild(nodeAux);
+            // If valid Schema in XML 
+            if (ValidateXML(XmlFileTempPath, XsdFilePathSubscriptions))
+            {
+                return true;
+            }
 
-            nodeAux = docDefinitive.CreateElement("name");
-            nodeAux.InnerText = application.Name;
-            node.AppendChild(nodeAux);
-
-            docDefinitive.SelectSingleNode("//applications").AppendChild(node);
-
-            docDefinitive.Save(XmlFilePath);
-            Debug.Print("[DEBUG] 'Applications inserted with success' | AddApplication() in HandlerXML");
+            Debug.Print("[DEBUG] 'Invalid Schema in XML' | IsValidSubscriptionsSchemaXML() in HandlerXML");
+            RefreshTempFile();
+            return false;
         }
 
-        public void UpdateApplication(Application application)
+
+        #endregion
+
+        #region Compare XML with XML Schema (xsd)
+
+        public string ContainerRequest()
         {
-            XmlDocument docDefinitive = new XmlDocument();
-            docDefinitive.Load(XmlFilePath);
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
 
-            XmlNode node = docDefinitive.SelectSingleNode($"//applications/application[id ='{application.Id}']");
+            string container = docTemp.SelectSingleNode("//somiod/container/name").InnerText;
 
-            if (node != null)
-            {
-                node.SelectSingleNode("name").InnerText = application.Name;
+            RefreshTempFile();
 
-                docDefinitive.Save(XmlFilePath);
-
-                Debug.Print("[DEBUG] 'Applications update with success' | UpdateApplication() in HandlerXML");
-            }
-            else
-            {
-                Debug.Print("[DEBUG] 'Application not found' | UpdateApplication() in HandlerXML");
-            }
-        }
-
-        public void DeleteApplication(Application application)
-        {
-            XmlDocument docDefinitive = new XmlDocument();
-            docDefinitive.Load(XmlFilePath);
-
-            XmlNode node = docDefinitive.SelectSingleNode($"//applications/application[id ='{application.Id}']");
-
-            if (node != null)
-            {
-                docDefinitive.DocumentElement.RemoveChild(node);
-
-                docDefinitive.Save(XmlFilePath);
-
-                Debug.Print("[DEBUG] 'Applications delete with success' | DeleteApplication() in HandlerXML");
-            }
-            else
-            {
-                Debug.Print("[DEBUG] 'Application not found' | DeleteApplication() in HandlerXML");
-            }
+            return container;
         }
         #endregion
 
-        #region Validate XML with XML Schema (xsd)
+        #region XML Data handler
 
+        // Valida o Schema do Data
+        public bool ValidateDataSchemaXML(string rawXml)
+        {
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+            XmlNode node = docTemp.SelectSingleNode("//somiod");
+
+            node.InnerXml += rawXml;
+
+            docTemp.Save(XmlFileTempPath);
+
+            if (ValidateXML(XmlFileTempPath, XsdFilePathData))
+            {
+                return true;
+            }
+
+            Debug.Print("[DEBUG] 'Invalid Schema in XML' | ValidateDataSchemaXML() in HandlerXML");
+            RefreshTempFile();
+            return false;
+        }
+
+        // Analisa e extrai dados relevantes para processos subsequentes
+
+        public Data DataRequest()
+        {
+            Data data = new Data();
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+
+            XmlNode node = docTemp.SelectSingleNode("//somiod/data");
+
+            if (node != null)
+            {
+                if (node.SelectSingleNode("name") != null)
+                {
+                    data.Name = node.SelectSingleNode("name").InnerText;
+                }
+
+                if (node.SelectSingleNode("content") != null)
+                {
+                    data.Content = node.SelectSingleNode("content").InnerText;
+                }
+            }
+
+            RefreshTempFile();
+            return data;
+        }
+
+        #endregion
+
+        //#region XML Subscriptions handler
+
+        //// Faz tratamento dos dados do request retorna uma nova subscription 
+        //public Subscription SubscriptionRequest()
+        //{
+        //    XmlDocument doc = new XmlDocument();
+        //    Subscription subscription = new Subscription();
+        //    doc.Load(XmlFileTempPath);
+
+        //    XmlNode node = doc.SelectSingleNode("//somiod/subscription");
+        //    if (node.SelectSingleNode("name") != null)
+        //    {
+        //        subscription.Name = node.SelectSingleNode("name").InnerText;
+        //    }
+
+        //    if (node.SelectSingleNode("event") != null)
+        //    {
+        //        subscription.Event = node.SelectSingleNode("event").InnerText;
+        //    }
+
+        //    if (node.SelectSingleNode("endpoint") != null)
+        //    {
+        //        subscription.Endpoint = node.SelectSingleNode("endpoint").InnerText;
+        //    }
+
+        //    RefreshTempFile();
+        //    return subscription;
+        //}
+
+        //#endregion
+
+        #region Compare XML with XML Schema (xsd)
+
+        // Valida o XML em relação ao XSD Schema
         public bool ValidateXML(string file, string XsdFilePath)
         {
             isValid = true;
@@ -176,6 +239,7 @@ namespace Middleware.XML
             return isValid;
         }
 
+        // Evento para lidar com os erros e avisos durante a validação XML ^
         private void EventErrorValidation(object sender, ValidationEventArgs args)
         {
             isValid = false;
@@ -193,28 +257,29 @@ namespace Middleware.XML
         }
         #endregion
 
-        #region XML Handler
+        #region XML handler
 
         public bool IsValidXML(string input)
         {
+            // verifica primeiro se a string não vem vazia.
+            if (string.IsNullOrEmpty(input))
+            {
+                return false;
+            }
+
             try
             {
-                if (!string.IsNullOrEmpty(input))
-                {
-                    System.Xml.XmlDocument xmlDoc = new System.Xml.XmlDocument();
-                    xmlDoc.LoadXml(input);
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
+                XmlDocument document = new XmlDocument();
+                document.LoadXml(input);
+                return true;
             }
-            catch (System.Xml.XmlException)
+            catch (Exception ex)
             {
                 return false;
             }
         }
+
+        // Limpa qualquer ficheiro XML temporário
         public void RefreshTempFile()
         {
             XmlDocument docTemp = new XmlDocument();
@@ -229,6 +294,7 @@ namespace Middleware.XML
 
             docTemp.Save(XmlFileTempPath);
         }
+
         #endregion
 
     }

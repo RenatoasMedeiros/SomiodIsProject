@@ -18,11 +18,26 @@ namespace Middleware.Controllers
 
         // GET: api/Application
         [HttpGet]
-        [Route("api/somiod/applications")]
-        public IHttpActionResult GetApplications()
+        [Route("api/somiod")]
+        public HttpResponseMessage GetApplications()
         {
-            List<string> applicationNames = DiscoverApplications();
-            return Ok(applicationNames);
+            try
+            {
+                // Check if the somiod-discover header is present
+                var discoverHeader = Request.Headers.GetValues("somiod-discover");
+
+                if (discoverHeader != null && discoverHeader.Contains("application"))
+                {
+                    var applicationNames = DiscoverApplications();
+                    return applicationNames;
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error discovering applications: {ex.Message}");
+                throw;
+            }
         }
 
         // GET: api/Application/1
@@ -33,7 +48,9 @@ namespace Middleware.Controllers
             Application application = GetApplicationByName(name);
             if (application != null)
             {
-                return Ok(application);
+                var response = Request.CreateResponse(application);
+                response.Content = new ObjectContent<Application>(application, new System.Net.Http.Formatting.XmlMediaTypeFormatter());
+                return Ok(response);
             }
             return NotFound();
         }
@@ -117,7 +134,6 @@ namespace Middleware.Controllers
                     reader.Close();
                     conn.Close();
 
-                    handler.AddApplication(application);
                     return Content(HttpStatusCode.OK, "Application created successfully", Configuration.Formatters.XmlFormatter);
                 }
                 return InternalServerError();
@@ -135,7 +151,7 @@ namespace Middleware.Controllers
         }
 
         //Put method
-        [Route("api/somiod/applications/{id}")]
+        [Route("api/somiod/applications/{name}")]
         public IHttpActionResult PutApplication(int id, HttpRequestMessage request)
         {
 
@@ -210,7 +226,6 @@ namespace Middleware.Controllers
                     reader.Close();
                     conn.Close();
 
-                    handler.UpdateApplication(application);
                     return Content(HttpStatusCode.OK, "Application update successfully", Configuration.Formatters.XmlFormatter);
                 }
                 return Content(HttpStatusCode.BadRequest, "Application does not exist", Configuration.Formatters.XmlFormatter);
@@ -226,28 +241,97 @@ namespace Middleware.Controllers
             }
         }
 
-        // DELETE: api/Application/1
-        [HttpDelete]
+        //Delete method
         [Route("api/somiod/applications/{name}")]
         public IHttpActionResult DeleteApplication(string name)
         {
-            Application application = GetApplicationByName(name);
-            if (application != null)
+
+            HandlerXML handler = new HandlerXML();
+
+            string sqlGetApplication = "SELECT * FROM Applications WHERE name = @Name";
+            string sqlDeleteApplication = "DELETE FROM Applications WHERE name = @Name";
+            
+            string sqlSelectContainer = "SELECT id FROM Containers WHERE parent = @Parent";
+            string sqlDeleteContainer = "DELETE FROM Containers WHERE Id = @Id";
+
+            string sqlDeleteSubscription = "DELETE FROM Subscriptions WHERE parent = @Parent";
+
+            string sqlDeleteData = "DELETE FROM Data WHERE Parent = @Parent";
+            SqlConnection conn = null;
+            Application application = new Application();
+
+            try
             {
-                GetApplicationByName(name);
-                return Ok(application);
+                conn = new SqlConnection(connectionString);
+                conn.Open();
+
+                SqlCommand cmdGet = new SqlCommand(sqlGetApplication, conn);
+                cmdGet.Parameters.AddWithValue("@Name", name);
+                SqlDataReader reader = cmdGet.ExecuteReader();
+                while (reader.Read())
+                {
+                    application.Id = (int)reader["Id"];
+                    application.Name = (string)reader["Name"];
+                    application.Creation_dt = (DateTime)reader["Creation_dt"];
+                }
+
+                reader.Close();
+
+
+                SqlCommand cmdIdContainers = new SqlCommand(sqlSelectContainer, conn);
+
+                cmdIdContainers.Parameters.AddWithValue("@Parent", application.Id);
+
+                SqlDataReader readerMod = cmdIdContainers.ExecuteReader();
+                List<int> ContainersIds = new List<int>();
+                List<int> SubscriptionIds = new List<int>();
+                List<int> DataIds = new List<int>();
+                while (readerMod.Read())
+                {
+                    ContainersIds.Add((int)readerMod["Id"]);
+                }
+                readerMod.Close();
+
+                foreach (int idContainer in ContainersIds)
+                {
+                    SqlCommand cmdDeleteData = new SqlCommand(sqlDeleteData, conn);
+                    cmdDeleteData.Parameters.AddWithValue("@Parent", idContainer);
+                    cmdDeleteData.ExecuteNonQuery();
+
+                    SqlCommand cmdDeleteContainer = new SqlCommand(sqlDeleteContainer, conn);
+                    cmdDeleteContainer.Parameters.AddWithValue("@Id", idContainer);
+                    cmdDeleteContainer.ExecuteNonQuery();
+
+                    ////Executar query Delete Subscription
+                    //SqlCommand cmdDeleteSubscription = new SqlCommand(sqlDeleteSubscription, conn);
+                    //cmdDeleteSubscription.Parameters.AddWithValue("@Parent", idContainer);
+                    //cmdDeleteSubscription.ExecuteNonQuery();
+
+                }
+
+                SqlCommand cmd = new SqlCommand(sqlDeleteApplication, conn);
+                cmd.Parameters.AddWithValue("@Name", application.Name);
+                int numRows = cmd.ExecuteNonQuery();
+                if (numRows > 0)
+                {
+                    conn.Close();
+                    return Content(HttpStatusCode.OK, "Application delete successfully", Configuration.Formatters.XmlFormatter);
+                }
+                return Content(HttpStatusCode.BadRequest, "Application does not exist", Configuration.Formatters.XmlFormatter);
             }
-            return NotFound();
+            catch (Exception e)
+            {
+                Debug.Print("[DEBUG] 'Exception in Delete() in ApplicationController' | " + e.Message);
+
+                if (conn.State == System.Data.ConnectionState.Open)
+                {
+                    conn.Close();
+                }
+                return InternalServerError();
+            }
         }
-        
 
-        private string GenerateUniqueName()
-        {
-            return "App_" + DateTime.Now.ToString("yyyyMMddHHmmssfff");
-        }
-
-
-        public List<string> DiscoverApplications()
+        public HttpResponseMessage DiscoverApplications()
         {
             try
             {
@@ -260,12 +344,19 @@ namespace Middleware.Controllers
                     {
                         using (SqlDataReader reader = cmd.ExecuteReader())
                         {
-                            List<string> applicationNames = new List<string>();
+                            List<Application> applicationNames = new List<Application>();
                             while (reader.Read())
                             {
-                                applicationNames.Add((string)reader["Name"]);
+                                Application application = new Application
+                                {
+                                    Name = (string)reader["Name"],
+                                };
+                                applicationNames.Add(application);
                             }
-                            return applicationNames;
+
+                            var response = Request.CreateResponse(applicationNames);
+                            response.Content = new ObjectContent<List<Application>>(applicationNames, new System.Net.Http.Formatting.XmlMediaTypeFormatter());
+                            return response;
                         }
                     }
                 }
@@ -310,55 +401,6 @@ namespace Middleware.Controllers
             {
                 // Handle exceptions
                 Console.WriteLine($"Error getting application: {ex.Message}");
-                throw;
-            }
-        }
-
-        private void UpdateApplication(Application application)
-        {
-            try
-            {
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-
-                    // Your implementation to update the application in the database
-                    using (SqlCommand cmd = new SqlCommand("UPDATE Applications SET Name = @Name WHERE Id = @Id", connection))
-                    {
-                        cmd.Parameters.AddWithValue("@Name", application.Name);
-                        cmd.Parameters.AddWithValue("@Id", application.Id);
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Handle exceptions
-                Console.WriteLine($"Error updating application: {ex.Message}");
-                throw;
-            }
-        }
-
-        private void DeleteApplicationById(int id)
-        {
-            try
-            {
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-
-                    // Your implementation to delete the application from the database by ID
-                    using (SqlCommand cmd = new SqlCommand("DELETE FROM Applications WHERE Id = @Id", connection))
-                    {
-                        cmd.Parameters.AddWithValue("@Id", id);
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Handle exceptions
-                Console.WriteLine($"Error deleting application: {ex.Message}");
                 throw;
             }
         }

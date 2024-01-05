@@ -12,43 +12,6 @@ namespace Middleware.Controllers
     {
         string connectionString = Properties.Settings.Default.ConnStr;
 
-        ApplicationController applicationController = new ApplicationController();
-
-
-        [HttpGet]
-        [Route("api/somiod/discover")]
-        public IHttpActionResult DiscoverResources()
-        {
-            try
-            {
-                // Check if the somiod-discover header is present
-                var discoverHeader = Request.Headers.GetValues("somiod-discover");
-
-                if (discoverHeader != null && discoverHeader.Contains("application"))
-                {
-                    // Discover applications
-                    List<string> applicationNames = applicationController.DiscoverApplications();
-                    return Ok(applicationNames);
-                }
-                else if (discoverHeader != null && discoverHeader.Contains("container"))
-                {
-                    // Discover containers
-                    List<string> containerNames = DiscoverContainers();
-                    return Ok(containerNames);
-                }
-                // Add similar logic for other resource types (data, subscription)
-
-                // Default case: Invalid or missing somiod-discover header
-                return BadRequest("Invalid or missing somiod-discover header.");
-            }
-            catch (Exception ex)
-            {
-                // Handle exceptions
-                Console.WriteLine($"Error discovering resources: {ex.Message}");
-                return InternalServerError();
-            }
-        }
-
         private List<string> DiscoverContainers()
         {
             try
