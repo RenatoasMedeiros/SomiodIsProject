@@ -2,12 +2,18 @@
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Web.Http;
+using System.Xml;
+using System.Xml.Serialization;
 using Middleware.Models;
 using Middleware.XML;
+using Swashbuckle.Swagger;
 using static System.Net.Mime.MediaTypeNames;
 
 
@@ -18,10 +24,10 @@ namespace Middleware.Controllers
         string connectionString = Properties.Settings.Default.ConnStr;
 
         // GET api/somiod/app
+        //Return XML
         [HttpGet]
         [Route("api/somiod/applications/{application}/containers")]
-        public IEnumerable<Container> GetAllContainers([FromUri] string application)
-
+        public HttpResponseMessage GetAllContainers([FromUri] string application)
         {
 
             List<Container> containers = new List<Container>();
@@ -30,7 +36,7 @@ namespace Middleware.Controllers
 
             if (discoverHeader == null || !discoverHeader.Contains("container"))
             {
-                return containers;
+                return Request.CreateResponse(HttpStatusCode.BadRequest, "Error - There was an error in the Request");
             }
             #endregion
 
@@ -57,11 +63,10 @@ namespace Middleware.Controllers
                 }
                 catch (Exception ex)
                 {
-                    return (IEnumerable<Container>)ex;
+                    return Request.CreateResponse(HttpStatusCode.InternalServerError, "Error - There was an error : " + ex);
                 }
 
                 queryString = "SELECT * FROM Containers WHERE parent = @Parent";
-
 
                 command = new SqlCommand(queryString, connection);
                 command.Parameters.AddWithValue("@Parent", parentId);
@@ -73,17 +78,37 @@ namespace Middleware.Controllers
                     {
                         Container c = new Container
                         {
-                            Id = (int)reader["Id"],
                             Name = (string)reader["Name"],
-                            Creation_dt = (DateTime)reader["Creation_dt"],
-                            Parent = (int)reader["Parent"]
                         };
                         containers.Add(c);
 
                     }
                     reader.Close();
                     connection.Close();
-                    return containers;
+
+                    var response = Request.CreateResponse(HttpStatusCode.OK);
+
+
+                    using (var writer = new StringWriter())
+                    {
+                        var serializer = new XmlSerializer(typeof(List<Data>));
+                        serializer.Serialize(writer, containers);
+                        var xmlString = writer.ToString();
+
+                        var xmlDoc = new XmlDocument();
+                        xmlDoc.LoadXml(xmlString);
+
+                        foreach (XmlNode dataNode in xmlDoc.SelectNodes("//Data"))
+                        {
+                            dataNode.RemoveChild(dataNode.SelectSingleNode("Id"));
+                            dataNode.RemoveChild(dataNode.SelectSingleNode("Content"));
+                            dataNode.RemoveChild(dataNode.SelectSingleNode("Creation_dt"));
+                            dataNode.RemoveChild(dataNode.SelectSingleNode("Parent"));
+                        }
+                        response.Content = new StringContent(xmlDoc.OuterXml, Encoding.UTF8, "application/xml");
+                    }
+
+                    return response;
                 }
                 catch (Exception ex)
                 {
@@ -91,7 +116,7 @@ namespace Middleware.Controllers
                     {
                         connection.Close();
                     }
-                    return containers;
+                    return Request.CreateResponse(HttpStatusCode.InternalServerError, "Error - There was an error : " + ex);
                 }
             }
 
@@ -129,9 +154,10 @@ namespace Middleware.Controllers
         }
 
         //Get apenas dos containers desta aplicação 
+        //Return XML
         [HttpGet]
         [Route("api/somiod/applications/{application}/containers/{container}")]
-        public IHttpActionResult GetContainerByName([FromUri] string application, [FromUri] string container)
+        public HttpResponseMessage GetContainer([FromUri] string container)
         {
 
             //encontrar o parent para adicionar à query 
@@ -155,10 +181,7 @@ namespace Middleware.Controllers
                     {
                         containerToFind = new Container();
                         {
-                            containerToFind.Id = (int)reader["Id"];
                             containerToFind.Name = (string)reader["Name"];
-                            containerToFind.Creation_dt = (DateTime)reader["Creation_dt"];
-                            containerToFind.Parent = (int)reader["Parent"];
                         };
                     }
                 }
@@ -167,9 +190,30 @@ namespace Middleware.Controllers
 
                 if (containerToFind == null)
                 {
-                    return NotFound();
+                    return Request.CreateResponse(HttpStatusCode.NotFound, "Error - There was an error Finding the container");
                 }
-                return Ok(containerToFind);
+
+                var response = Request.CreateResponse(HttpStatusCode.OK);
+
+                using (var writer = new StringWriter())
+                {
+                    var serializer = new XmlSerializer(typeof(Container));
+                    serializer.Serialize(writer, containerToFind);
+                    var xmlString = writer.ToString();
+
+                    var xmlDoc = new XmlDocument();
+                    xmlDoc.LoadXml(xmlString);
+
+                    foreach (XmlNode containerNode in xmlDoc.SelectNodes("//Container"))
+                    {
+                        containerNode.RemoveChild(containerNode.SelectSingleNode("Id"));
+                        containerNode.RemoveChild(containerNode.SelectSingleNode("Creation_dt"));
+                        containerNode.RemoveChild(containerNode.SelectSingleNode("Parent"));
+                    }
+                    response.Content = new StringContent(xmlDoc.OuterXml, Encoding.UTF8, "application/xml");
+                }
+
+                return response;
             }
             catch (Exception)
             {
@@ -178,7 +222,7 @@ namespace Middleware.Controllers
                 {
                     conn.Close();
                 }
-                return NotFound();
+                return Request.CreateResponse(HttpStatusCode.NotFound, "Error - There was an error ");
             }
         }
 
@@ -187,10 +231,12 @@ namespace Middleware.Controllers
         [Route("api/somiod/applications/{application}/containers")]
         public IHttpActionResult PostContainer(HttpRequestMessage request, string application)
         {
+            #region Verificar Content
             if (request.Content == null)
             {
                 return BadRequest("Invalid data. The request body cannot be empty.");
             }
+            #endregion
 
             try
             {
@@ -200,6 +246,24 @@ namespace Middleware.Controllers
                 if (discoverHeader == null || !discoverHeader.Contains("container"))
                 {
                     return BadRequest("Invalid or missing somiod-discover header.");
+                }
+                #endregion
+
+                #region Verificar XML Recebido 
+                HandlerXML handler = new HandlerXML();
+
+                string requestXML = request.Content.ReadAsStringAsync().Result
+                    .Replace(System.Environment.NewLine, String.Empty);
+
+
+                if (!handler.IsValidXML(requestXML))
+                {
+                    return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
+                }
+
+                if (!handler.ValidateContainerSchemaXML(requestXML))
+                {
+                    return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
                 }
                 #endregion
 
@@ -235,24 +299,6 @@ namespace Middleware.Controllers
                     {
                         return InternalServerError();
                     }
-                }
-                #endregion
-
-                #region Verificar XML Recebido 
-                HandlerXML handler = new HandlerXML();
-
-                string requestXML = request.Content.ReadAsStringAsync().Result
-                    .Replace(System.Environment.NewLine, String.Empty);
-
-
-                if (!handler.IsValidXML(requestXML))
-                {
-                    return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
-                }
-
-                if (!handler.ValidateDataSchemaXML(requestXML))
-                {
-                    return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
                 }
 
                 Container container = new Container
@@ -310,6 +356,7 @@ namespace Middleware.Controllers
                         return InternalServerError();
                     }
                 }
+
             }
             catch (Exception ex)
             {
@@ -317,6 +364,8 @@ namespace Middleware.Controllers
                 Console.WriteLine($"Error discovering resources: {ex.Message}");
                 return InternalServerError();
             }
+
+
         }
 
         // PUT Container Alterar rotas
@@ -389,7 +438,7 @@ namespace Middleware.Controllers
                     return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
                 }
 
-                if (!handler.ValidateDataSchemaXML(requestXML))
+                if (!handler.ValidateContainerSchemaXML(requestXML))
                 {
                     return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
                 }
@@ -419,7 +468,7 @@ namespace Middleware.Controllers
                         if (rows < 0)
                             return NotFound();
 
-                        return Ok();
+                        return Content(HttpStatusCode.OK, "Container Updated Succefully", Configuration.Formatters.XmlFormatter);
                     }
                     catch (Exception ex)
                     {
@@ -427,6 +476,7 @@ namespace Middleware.Controllers
                     }
                 }
                 #endregion
+
             }
             catch (Exception ex)
             {
@@ -513,7 +563,6 @@ namespace Middleware.Controllers
                     }
                 }
                 #endregion
-
 
                 #region Apagar Subscriptions do Container
 

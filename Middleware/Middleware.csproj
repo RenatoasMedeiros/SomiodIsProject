@@ -123,7 +123,6 @@
     <Compile Include="Controllers\DataController.cs" />
     <Compile Include="Controllers\ApplicationController.cs" />
     <Compile Include="Controllers\ContainerController.cs" />
-    <Compile Include="Controllers\DiscoverController.cs" />
     <Compile Include="Controllers\SubscriptionController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
@@ -166,6 +165,9 @@
       <SubType>Designer</SubType>
     </None>
     <None Include="XML\Schema\containers.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="XML\Schema\subscription.xsd">
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>

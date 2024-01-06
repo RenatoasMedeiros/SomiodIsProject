@@ -12,6 +12,12 @@ using System.Runtime.InteropServices;
 using System.ComponentModel;
 using Middleware.XML;
 using Swashbuckle.Swagger;
+using System.Threading;
+using uPLibrary.Networking.M2Mqtt;
+using System.Text;
+using System.IO;
+using System.Xml.Serialization;
+using System.Xml;
 
 namespace Middleware.Controllers
 {
@@ -22,14 +28,27 @@ namespace Middleware.Controllers
         #region GET Data
 
         [HttpGet]
-        [Route("api/somiod/{application}/data")]
+        [Route("api/somiod/{application}/data")] // mudar o get all
         public HttpResponseMessage GetAllData(string application)
         {
             List<Data> data = new List<Data>();
-            string sql = "SELECT d.* FROM Data d " +
-                 "JOIN Containers c ON d.parent = c.id " +
-                 "JOIN Applications a ON c.parent = a.id " +
-                 "WHERE a.name = @Application";
+
+            #region Verificar Header
+            var discoverHeader = Request.Headers.GetValues("somiod-discover");
+
+            if (discoverHeader == null || !discoverHeader.Contains("data"))
+            {
+                return Request.CreateResponse(HttpStatusCode.BadRequest, "Error - There was an error in the Request");
+            }
+            #endregion
+
+            string sql = @"
+                    SELECT d.* 
+                    FROM Data d
+                    INNER JOIN Containers c ON d.Parent = c.Id
+                    INNER JOIN Applications a ON c.parent = a.Id
+                    WHERE a.name = @Application
+                    ORDER BY d.Id";
 
             SqlConnection conn = null;
 
@@ -39,6 +58,7 @@ namespace Middleware.Controllers
                 conn.Open();
                 SqlCommand cmd = new SqlCommand(sql, conn);
                 cmd.Parameters.AddWithValue("@Application", application);
+
                 SqlDataReader reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
@@ -52,11 +72,29 @@ namespace Middleware.Controllers
                 conn.Close();
 
                 var response = Request.CreateResponse(HttpStatusCode.OK, data);
-                response.Content = new ObjectContent<List<Data>>(data, new System.Net.Http.Formatting.XmlMediaTypeFormatter());
+
+                using (var writer = new StringWriter())
+                {
+                    var serializer = new XmlSerializer(typeof(List<Data>));
+                    serializer.Serialize(writer, data);
+                    var xmlString = writer.ToString();
+
+                    var xmlDoc = new XmlDocument();
+                    xmlDoc.LoadXml(xmlString);
+
+                    foreach (XmlNode containerNode in xmlDoc.SelectNodes("//Data"))
+                    {
+                        containerNode.RemoveChild(containerNode.SelectSingleNode("Id"));
+                        containerNode.RemoveChild(containerNode.SelectSingleNode("Creation_dt"));
+                        containerNode.RemoveChild(containerNode.SelectSingleNode("Parent"));
+                    }
+                    response.Content = new StringContent(xmlDoc.OuterXml, Encoding.UTF8, "application/xml");
+                }
 
                 return response;
 
             }
+
             catch (Exception ex)
             {
                 Debug.Print("[DEBUG] 'Exception on Get() method in DataController' | " + ex.Message);
@@ -74,7 +112,7 @@ namespace Middleware.Controllers
         #region GET Data by Name
 
         [HttpGet]
-        [Route("api/somiod/{application}/{container}/{dataName}/data")]
+        [Route("api/somiod/{application}/{container}/data/{dataName}")]
         public HttpResponseMessage GetDatabyName(string dataName)
         {
             Data data = new Data();
@@ -149,13 +187,6 @@ namespace Middleware.Controllers
                 .Replace(System.Environment.NewLine, String.Empty);
             Debug.Print(requestXML);
 
-            if (requestXML == null)
-            {
-                Debug.Print("newData:" + requestNewData.Content.ReadAsStringAsync().Result + " is null");
-                return BadRequest("Invalid new data. The request body cannot be empty!");
-
-            }
-
             if (!handler.IsValidXML(requestXML))
             {
                 Debug.Print("[DEBUG] 'String is not XML' | Post() in ContainerController");
@@ -219,10 +250,12 @@ namespace Middleware.Controllers
 
             // SELECT subscription baseado no containerId
 
+            #region Select subscriptions
+
             List<Subscription> subscriptions = new List<Subscription>();
             string sqlSelectSubscriptions = "SELECT * From Subscriptions WHERE Parent = @ParentId AND event = '1'";
 
-            SqlConnection conn = null;
+            conn = null;
 
             try
             {
@@ -234,21 +267,22 @@ namespace Middleware.Controllers
                 while (reader.Read())
                 {
                     Subscription subscription = new Subscription();
-                    subscription.Id = (int)readerSubscriptions["Id"];
-                    subscription.Name = (string)readerSubscriptions["Name"];
-                    subscription.Creation_dt = (DateTime)readerSubscriptions["Creation_dt"];
-                    subscription.Parent = (int)readerSubscriptions["Parent"];
-                    subscription.Endpoint = (string)readerSubscriptions["Endpoint"];
-                    subscription.Event = (string)readerSubscriptions["Event"];
+                    subscription.Id = (int)reader["Id"];
+                    subscription.Name = (string)reader["Name"];
+                    subscription.Creation_dt = (DateTime)reader["Creation_dt"];
+                    subscription.Parent = (int)reader["Parent"];
+                    subscription.Endpoint = (string)reader["Endpoint"];
+                    subscription.Event = (string)reader["Event"];
                     subscriptions.Add(subscription);
                 }
                 reader.Close();
                 conn.Close();
+                #endregion
 
                 // erro se não houver subscriptions
                 if (subscriptions.Count == 0)
                 {
-                    return BadRequest();
+                    return Content(HttpStatusCode.BadRequest, "It doesn't exit any subscriptions, create one first!", Configuration.Formatters.XmlFormatter);
                 }
                 else
                 {
@@ -257,11 +291,9 @@ namespace Middleware.Controllers
                     {
                         Thread thread = new Thread(() =>
                         {
-                            MqttClient mosquittoClient;
-
                             try
                             {
-                                mosquittoClient = new MqttClient(subscription.Endpoint);
+                                MqttClient mosquittoClient = new MqttClient(subscription.Endpoint);
 
                                 if (mosquittoClient.IsConnected)
                                 {
@@ -271,17 +303,17 @@ namespace Middleware.Controllers
 
                                 mosquittoClient.Connect(Guid.NewGuid().ToString());
 
-
-                                // alterar o publish
-                                mosquittoClient.Publish(subscription.Name + "/creation", Encoding.UTF8.GetBytes("'" + newData.Content + "'  (" + subscription.Endpoint + " - " + subscription.Name + "/creation) - " + DateTime.Now));
-
+                                byte[] msg = Encoding.UTF8.GetBytes(newData.Content);
+                                if (mosquittoClient.IsConnected)
+                                {
+                                    mosquittoClient.Publish(subscription.Name, msg);
+                                }
                             }
                             catch (Exception)
                             {
                                 Debug.Print("Error trying to connect to: " + subscription.Endpoint);
                             }
-                        });
-                        thread.Start();
+                        }); thread.Start();
                     }
                 }
 
@@ -291,7 +323,7 @@ namespace Middleware.Controllers
                 {
                     conn = new SqlConnection(connectionString);
                     conn.Open();
-                    SqlCommand cmd = new SqlCommand(sqlInsert, conn);
+                    cmd = new SqlCommand(sqlInsert, conn);
 
                     cmd.Parameters.AddWithValue("@name", newData.Name);
                     cmd.Parameters.AddWithValue("@content", newData.Content);
@@ -302,7 +334,7 @@ namespace Middleware.Controllers
 
                     if (rowsAffected > 0)
                     {
-                        return Ok();
+                        return Content(HttpStatusCode.OK, "Data created successfully", Configuration.Formatters.XmlFormatter);
                     }
 
                     return InternalServerError();
@@ -328,8 +360,6 @@ namespace Middleware.Controllers
                 }
                 return InternalServerError();
             }
-
-            
         }
         #endregion
 
@@ -449,8 +479,11 @@ namespace Middleware.Controllers
             {
                 #region Verificar se a data existe
                 int dataId = -1;
-                int dataParent = -1;
+                int containerId = -1;
+
                 string sql = "SELECT Id, Parent FROM Data WHERE name = @dataName";
+
+                Data data = new Data();
 
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
@@ -463,13 +496,18 @@ namespace Middleware.Controllers
 
                         if (reader.HasRows)
                         {
+                            
                             while (reader.Read())
                             {
                                 dataId = (int)reader["Id"];
-                                dataParent = (int)reader["Parent"];
+                                containerId = (int)reader["Parent"];
                             }
                             reader.Close();
+
                         }
+
+                        data.Id = dataId;
+                        data.Parent = containerId;
 
                         if (dataId == -1)
                             return NotFound();
@@ -483,6 +521,81 @@ namespace Middleware.Controllers
                     }
                 }
                 #endregion
+
+                #region Select subscriptions
+
+                List<Subscription> subscriptions = new List<Subscription>();
+                string sqlSelectSubscriptions = "SELECT * From Subscriptions WHERE Parent = @ParentId AND event = '1'";
+
+                SqlConnection conn = null;
+
+                try
+                {
+                    conn = new SqlConnection(connectionString);
+                    conn.Open();
+                    SqlCommand cmd = new SqlCommand(sqlSelectSubscriptions, conn);
+                    cmd.Parameters.AddWithValue("@ParentId", containerId);
+                    SqlDataReader reader = cmd.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        Subscription subscription = new Subscription();
+                        subscription.Id = (int)reader["Id"];
+                        subscription.Name = (string)reader["Name"];
+                        subscription.Creation_dt = (DateTime)reader["Creation_dt"];
+                        subscription.Parent = (int)reader["Parent"];
+                        subscription.Endpoint = (string)reader["Endpoint"];
+                        subscription.Event = (string)reader["Event"];
+                        subscriptions.Add(subscription);
+                    }
+                    reader.Close();
+                    conn.Close();
+                } catch (Exception ex)
+                {
+                    return NotFound();
+                }
+                #endregion
+
+                #region MQTT Publish
+                    if (subscriptions.Count == 0)
+                    {
+                        return Content(HttpStatusCode.BadRequest, "There's no subscriptions. In order to delete the data first add a subscription", Configuration.Formatters.XmlFormatter);
+                    }
+                    else
+                    {
+                        foreach (Subscription subscription in subscriptions)
+                        {
+                            Thread thread = new Thread(() =>
+                            {
+                                try
+                                {
+                                    MqttClient mosquittoClient = new MqttClient(subscription.Endpoint);
+
+                                    if (mosquittoClient.IsConnected)
+                                    {
+                                        mosquittoClient.Disconnect();
+                                    }
+
+                                    mosquittoClient.Connect(Guid.NewGuid().ToString());
+
+                                    byte[] msgDataName = Encoding.UTF8.GetBytes(data.Name);
+                                    byte[] msgDataContent = Encoding.UTF8.GetBytes(data.Content);
+                                    if (mosquittoClient.IsConnected)
+                                    {
+                                        mosquittoClient.Publish(subscription.Name, Encoding.UTF8.GetBytes("Deleting the following data:" + msgDataName + " - " + msgDataContent));
+                                    }
+                                
+
+                                }
+                                catch (Exception)
+                                {
+                                    Debug.Print("Não foi possivel establecer conexão with: " + subscription.Endpoint);
+                                }
+                            });
+                            thread.Start();
+                        }
+                    }
+
+                    #endregion
 
                 sql = "DELETE FROM Data WHERE Id = @Id";
                 //verificar se container existe

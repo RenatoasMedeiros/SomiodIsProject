@@ -31,13 +31,14 @@ namespace Middleware.XML
             XsdFilePathData = HostingEnvironment.MapPath("~/XML/Schema/data.xsd");
 
             XsdFilePathSubscriptions = HostingEnvironment.MapPath("~/XML/Schema/subscription.xsd");
+
+            XsdFilePathContainers = HostingEnvironment.MapPath("~/XML/Schema/container.xsd");
         }
 
 
         #region XML Application handler
 
         // Funções para as applications
-
         public bool IsValidApplicationSchemaXML(string rawXml)
         {
             XmlDocument docTemp = new XmlDocument();
@@ -81,15 +82,9 @@ namespace Middleware.XML
 
         #endregion
 
-        #region XML Containers handler
-        // funções para os containers
-
-        #endregion
-
         #region XML Data handler
 
         // Analisa e extrai dados relevantes para processos subsequentes
-
         public Data DataRequest()
         {
             Data data = new Data();
@@ -116,13 +111,34 @@ namespace Middleware.XML
         }
 
         // Valida o Schema do Data
-        public bool ValidateDataSchemaXML(string rawXml)
+        public bool ValidateDataSchemaXML(string XML)
         {
             XmlDocument docTemp = new XmlDocument();
             docTemp.Load(XmlFileTempPath);
             XmlNode node = docTemp.SelectSingleNode("//somiod");
 
-            node.InnerXml += rawXml;
+            node.InnerXml += XML;
+
+            XmlNode resType = docTemp.LastChild.LastChild.SelectSingleNode("//res_type");
+
+            if (resType.InnerText != "data")
+                return false;
+
+            // Obtém o nó pai do nó "res_type"
+            XmlNode parentNode = resType.ParentNode;
+
+            // Remove o nó "res_type" do seu pai
+            if (parentNode != null)
+            {
+                parentNode.RemoveChild(resType);
+
+                docTemp.Save(XmlFileTempPath);
+
+                if (ValidateXML(XmlFileTempPath, XsdFilePathData))
+                {
+                    return true;
+                }
+            }
 
             docTemp.Save(XmlFileTempPath);
 
@@ -148,6 +164,13 @@ namespace Middleware.XML
 
             node.InnerXml += rawXml;
 
+            XmlNode resType = docTemp.SelectSingleNode("//res_type");
+
+            if (resType.InnerText != "subscription")
+                return false;
+
+            docTemp.LastChild.FirstChild.RemoveChild(resType);
+
             docTemp.Save(XmlFileTempPath);
 
             // If valid Schema in XML 
@@ -160,26 +183,6 @@ namespace Middleware.XML
             RefreshTempFile();
             return false;
         }
-
-        #endregion
-
-        #region XML Containers handler
-        // funções para os containers
-
-        public string ContainerRequest()
-        {
-            XmlDocument docTemp = new XmlDocument();
-            docTemp.Load(XmlFileTempPath);
-
-            string container = docTemp.SelectSingleNode("//somiod/container/name").InnerText;
-
-            RefreshTempFile();
-
-            return container;
-        }
-        #endregion
-
-        #region XML Subscriptions handler
 
         // Faz tratamento dos dados do request retorna uma nova subscription 
         public Subscription SubscriptionRequest()
@@ -208,6 +211,49 @@ namespace Middleware.XML
             return subscription;
         }
 
+        #endregion
+
+        #region XML Containers handler
+        // funções para os containers
+
+        public string ContainerRequest()
+        {
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+
+            string container = docTemp.SelectSingleNode("//somiod/container/name").InnerText;
+
+            RefreshTempFile();
+
+            return container;
+        }
+
+        public bool ValidateContainerSchemaXML(string XML)
+        {
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+
+            XmlNode node = docTemp.SelectSingleNode("//somiod");
+
+            node.InnerXml += XML;
+
+            XmlNode resType = docTemp.SelectSingleNode("//res_type");
+
+            if (resType.InnerText != "container")
+                return false;
+
+            docTemp.LastChild.FirstChild.RemoveChild(resType);
+
+            docTemp.Save(XmlFileTempPath);
+
+            if (ValidateXML(XmlFileTempPath, XsdFilePathContainers))
+            {
+                return true;
+            }
+
+            RefreshTempFile();
+            return false;
+        }
         #endregion
 
         #region Compare XML with XML Schema (xsd)
