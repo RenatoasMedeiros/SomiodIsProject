@@ -10,7 +10,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-
+using System.Xml;
 
 namespace TestApplicationNumpad
 {
@@ -95,11 +95,19 @@ namespace TestApplicationNumpad
 
             if (textBoxPin.Text == "1234")
             {
-                var request = new RestRequest("http://localhost:61552/api/somiod/application/lock/containers/lockMecanism/data/lockingStatus", Method.Get);
+                var request = new RestRequest("http://localhost:61552/api/somiod/lock/containers/lockMecanism/data/lockingStatus", Method.Get);
                 request.RequestFormat = DataFormat.Xml;
                 var response = client.Execute(request);
                 var xml = "";
-                if(response.Content == "lock")
+
+                var status = response.Content;
+
+                XmlDocument xmlDoc = new XmlDocument();
+                xmlDoc.LoadXml(status);
+
+                XmlNode contentNode = xmlDoc.SelectSingleNode("/*[local-name()='Data']/*[local-name()='Content']");
+
+                if (contentNode.InnerXml == "lock")
                 {
                     xml = @"<data>
                                 <name>numpadCode</name>
@@ -114,7 +122,7 @@ namespace TestApplicationNumpad
                             </data>";
                 }
 
-                request = new RestRequest("http://localhost:61552/api/somiod/application/lock/containers/lockMechanism/data", Method.Post)
+                request = new RestRequest("http://localhost:61552/api/somiod/lock/containers/lockMechanism/data", Method.Post)
                 {
                     RequestFormat = DataFormat.Xml
                 };
@@ -133,63 +141,62 @@ namespace TestApplicationNumpad
         }
 
 
-            //SE JA EXISTIR CONTINA A USAR A EXISTENTE SENAO POST
-            //pedido para ver o estado
-            //set da imagem
+        //SE JA EXISTIR CONTINA A USAR A EXISTENTE SENAO POST
+        //pedido para ver o estado
+        //set da imagem
 
-            //SENAO 
-            //POST CRIAR CADEADO 
-            //pedido para ver o estado
-            //set da imagem
-        }
+        //SENAO 
+        //POST CRIAR CADEADO 
+        //pedido para ver o estado
+        //set da imagem
 
-        private void textBoxPin_TextChanged(object sender, EventArgs e)
+    private void textBoxPin_TextChanged(object sender, EventArgs e)
+    {
+
+    }
+
+    private void Form1_Load(object sender, EventArgs e)
+    {
+        var request = new RestRequest("http://localhost:61552/api/somiod/numpad", Method.Get);
+        request.RequestFormat = DataFormat.Xml;
+        request.AddHeader("somiod-discover", "application");
+
+        var response = client.Execute(request);
+
+        if (response.StatusCode != System.Net.HttpStatusCode.OK)
         {
+            var xml = @"<application>
+                        <name>numpad</name>
+                        <res_type>application</res_type>
+                    </application>";
 
-        }
-
-        private void Form1_Load(object sender, EventArgs e)
-        {
-            var request = new RestRequest("http://localhost:61552/api/somiod/numpad", Method.Get);
-            request.RequestFormat = DataFormat.Xml;
-            request.AddHeader("somiod-discover", "application");
-
-            var response = client.Execute(request);
-
-            if (response.Content != "numpad")
+            request = new RestRequest("http://localhost:61552/api/somiod/numpad", Method.Post)
             {
-                var xml = @"<application>
-                           <name>numpad</name>
-                           <res_type>application</res_type>
-                       </application>";
+                RequestFormat = DataFormat.Xml
+            };
 
-                request = new RestRequest("http://localhost:61552/api/somiod/numpad", Method.Post)
-                {
-                    RequestFormat = DataFormat.Xml
-                };
+            request.AddParameter("application/xml", xml, ParameterType.RequestBody);
 
-                request.AddParameter("application/xml", xml, ParameterType.RequestBody);
+            response = client.Execute(request);
 
-                response = client.Execute(request);
-
-                xml = @"<container>
-                            <name>numpadMechanism</name>
-                            <res_type>container</res_type>
-                        </container>";
+            xml = @"<container>
+                        <name>numpadMechanism</name>
+                        <res_type>container</res_type>
+                    </container>";
 
 
-                request = new RestRequest("http://localhost:61552/api/somiod/application/numpad/containers", Method.Post)
-                {
-                    RequestFormat = DataFormat.Xml
-                };
+            request = new RestRequest("http://localhost:61552/api/somiod/numpad/containers", Method.Post)
+            {
+                RequestFormat = DataFormat.Xml
+            };
 
-                request.AddParameter("application/xml", xml, ParameterType.RequestBody);
+            request.AddParameter("application/xml", xml, ParameterType.RequestBody);
 
-                response = client.Execute(request);
+            response = client.Execute(request);
 
-                if (response.StatusCode != System.Net.HttpStatusCode.OK)
-                    return;
-            }
+            if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                return;
         }
+    }
     }
 }

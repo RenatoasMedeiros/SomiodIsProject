@@ -40,7 +40,7 @@ namespace Middleware.Controllers
             }
         }
 
-        // GET: api/Application/nome
+        // GET: api/somiod/nome
         [HttpGet]
         [Route("api/somiod/{name}")]
         public HttpResponseMessage GetApplication(string name)
@@ -163,7 +163,7 @@ namespace Middleware.Controllers
 
 
         [HttpPut]
-        [Route("api/somiod/applications/{name}")]
+        [Route("api/somiod/{name}")]
         public IHttpActionResult PutApplication(string name, HttpRequestMessage request)
         {
             HandlerXML handler = new HandlerXML();
@@ -256,7 +256,7 @@ namespace Middleware.Controllers
 
 
         //Delete method
-        [Route("api/somiod/applications/{name}")]
+        [Route("api/somiod/{name}")]
         public IHttpActionResult DeleteApplication(string name)
         {
 
