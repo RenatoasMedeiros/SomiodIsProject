@@ -14,7 +14,7 @@ namespace TestApplication
 {
     public partial class Form1 : Form
     {
-        RestClient client = new RestClient("http://localhost:61552/api/somiod");
+        RestClient client = new RestClient();
 
         
         public Form1()
@@ -26,20 +26,20 @@ namespace TestApplication
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            var request = new RestRequest("http://localhost:61552/api/somiod/lock", Method.Get);
-            request.RequestFormat = DataFormat.Xml;
+            var request = new RestRequest("http://localhost:61552/api/somiod/applications/lock", Method.Get);
             request.AddHeader("somiod-discover", "application");
 
             var response = client.Execute(request);
 
-            if (response.Content != "lock")
+            if (response.StatusCode != System.Net.HttpStatusCode.OK)// ???
             {
+                #region Criar Application
                 var xml = @"<application>
                            <name>lock</name>
                            <res_type>application</res_type>
                        </application>";
 
-                request = new RestRequest("http://localhost:61552/api/somiod/lock", Method.Post)
+                request = new RestRequest("http://localhost:61552/api/somiod/", Method.Post)
                 {
                     RequestFormat = DataFormat.Xml
                 };
@@ -48,8 +48,80 @@ namespace TestApplication
 
                 response = client.Execute(request);
 
-                pictureBoxLock.Image = Properties.Resources.Unlocked;
+                if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                    MessageBox.Show("There was an error. Shits Crazy");
+                #endregion
+
+                #region Criar Container
+                //criar container
+
+                xml = @"<container>
+                           <name>lockingMechanism</name>
+                           <res_type>container</res_type>
+                       </container>";
+
+                request = new RestRequest("http://localhost:61552/api/somiod/applications/lock/containers", Method.Post)
+                {
+                    RequestFormat = DataFormat.Xml
+                };
+
+                request.AddParameter("application/xml", xml, ParameterType.RequestBody);
+
+                response = client.Execute(request);
+
+                if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                    MessageBox.Show("There was an error. Shits Crazy");
+
+                #endregion
+                
+                #region Criar Data
+                xml = @"<data>
+                        <name>lockingStatus</name>
+                        <res_type>data</res_type>
+                    </data>";
+
+                request = new RestRequest("http://localhost:61552/api/somiod/applications/lock/containers/lockingMechanism/data", Method.Post)
+                {
+                    RequestFormat = DataFormat.Xml
+                };
+
+                request.AddParameter("application/xml", xml, ParameterType.RequestBody);
+                
+                response = client.Execute(request);
+
+                if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                    MessageBox.Show("There was an error. Shits Crazy");
+
+                //criar subs
+                #endregion
+
+                #region Criar Subs
+
+                xml = @"<subs>
+                        <name>lockingReport</name>
+                        <res_type>subs</res_type>
+                    </subs>";
+
+                request = new RestRequest("http://localhost:61552/api/somiod/applications/lock/containers/lockingMechanism/subs", Method.Post)
+                {
+                    RequestFormat = DataFormat.Xml
+                };
+
+                request.AddParameter("application/xml", xml, ParameterType.RequestBody);
+
+                response = client.Execute(request);
+                
+                if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                    MessageBox.Show("There was an error. Shits Crazy");
+                #endregion
+                pictureBoxLock.Image = Properties.Resources.Locked;
             }
+
+            request = new RestRequest("http://localhost:61552/api/somiod/applications/lock/containers/lockingMechanism/data/lockedStatus", Method.Get);
+            request.AddHeader("somiod-discover", "data");
+            response = client.Execute(request);
+
+            if (response.Content != "") { }
 
             //MessageBox.Show(response.Content.ToString());
 

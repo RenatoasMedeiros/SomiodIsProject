@@ -39,7 +39,7 @@
             this.pictureBoxLock.InitialImage = ((System.Drawing.Image)(resources.GetObject("pictureBoxLock.InitialImage")));
             this.pictureBoxLock.Location = new System.Drawing.Point(12, 12);
             this.pictureBoxLock.Name = "pictureBoxLock";
-            this.pictureBoxLock.Size = new System.Drawing.Size(547, 323);
+            this.pictureBoxLock.Size = new System.Drawing.Size(551, 768);
             this.pictureBoxLock.TabIndex = 0;
             this.pictureBoxLock.TabStop = false;
             // 
@@ -47,7 +47,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(571, 347);
+            this.ClientSize = new System.Drawing.Size(570, 820);
             this.Controls.Add(this.pictureBoxLock);
             this.Name = "Form1";
             this.Text = "Lock";

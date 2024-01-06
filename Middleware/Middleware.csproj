@@ -121,7 +121,6 @@
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\ApplicationController.cs" />
     <Compile Include="Controllers\ContainerController.cs" />
-    <Compile Include="Controllers\DiscoverController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
@@ -148,6 +147,9 @@
     </None>
     <None Include="Web.Release.config">
       <DependentUpon>Web.config</DependentUpon>
+    </None>
+    <None Include="XML\Schema\application.xsd">
+      <SubType>Designer</SubType>
     </None>
     <None Include="XML\Schema\containers.xsd">
       <SubType>Designer</SubType>

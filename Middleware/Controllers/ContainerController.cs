@@ -119,37 +119,6 @@ namespace Middleware.Controllers
             }
 
         }
-    
-        public List<string> DiscoverContainers()
-        {
-            try
-            {
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-
-                    // Your implementation to return a list of application names
-                    using (SqlCommand cmd = new SqlCommand("SELECT Name FROM Containers", connection))
-                    {
-                        using (SqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            List<string> containersNames = new List<string>();
-                            while (reader.Read())
-                            {
-                                containersNames.Add((string)reader["Name"]);
-                            }
-                            return containersNames;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Handle exceptions
-                Console.WriteLine($"Error discovering applications: {ex.Message}");
-                throw;
-            }
-        }
 
         //Get apenas dos containers desta aplicação 
         //Return XML
@@ -238,15 +207,6 @@ namespace Middleware.Controllers
 
             try
             {
-                #region Verificar Header
-                var discoverHeader = Request.Headers.GetValues("somiod-discover");
-
-                if (discoverHeader == null || !discoverHeader.Contains("container"))
-                {
-                    return BadRequest("Invalid or missing somiod-discover header.");
-                }
-                #endregion
-
                 #region Verificar XML Recebido 
                 HandlerXML handler = new HandlerXML();
 
@@ -259,7 +219,7 @@ namespace Middleware.Controllers
                     return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
                 }
 
-                if (!handler.IsValidContainerSchema(requestXML))
+                if (!handler.ValidateContainerSchema(requestXML))
                 {
                     return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
                 }
@@ -379,14 +339,6 @@ namespace Middleware.Controllers
 
             try
             {
-                #region Verificar Header
-                var discoverHeader = Request.Headers.GetValues("somiod-discover");
-
-                if (discoverHeader == null || !discoverHeader.Contains("container"))
-                {
-                    return BadRequest("Invalid or missing somiod-discover header.");
-                }
-                #endregion
 
                 #region Verificar se o container existe
                 int containerId = -1;
@@ -437,7 +389,7 @@ namespace Middleware.Controllers
                     return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
                 }
 
-                if (!handler.IsValidContainerSchema(requestXML))
+                if (!handler.ValidateContainerSchema(requestXML))
                 {
                     return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
                 }

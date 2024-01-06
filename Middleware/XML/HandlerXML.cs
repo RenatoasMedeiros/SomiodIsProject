@@ -49,6 +49,13 @@ namespace Middleware.XML
 
             node.InnerXml += rawXml;
 
+            XmlNode resType = docTemp.SelectSingleNode("//res_type");
+
+            if (resType.InnerText != "application")
+                return false;
+
+            docTemp.LastChild.FirstChild.RemoveChild(resType);
+
             docTemp.Save(XmlFileTempPath);
 
             if (ValidateXML(XmlFileTempPath, XsdFilePathApplications))
@@ -145,7 +152,7 @@ namespace Middleware.XML
         #endregion
 
         #region XML Containers handler
-        public bool IsValidContainerSchema(string XML)
+        public bool ValidateContainerSchema(string XML)
         {
             XmlDocument docTemp = new XmlDocument();
             docTemp.Load(XmlFileTempPath);
