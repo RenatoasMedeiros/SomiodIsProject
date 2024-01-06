@@ -104,7 +104,6 @@ namespace Middleware.Controllers
             }
 
 
-
         }
 
         #endregion
@@ -114,7 +113,6 @@ namespace Middleware.Controllers
         [Route("api/somiod/applications/{appName}/containers/{containerName}/subscriptions")]
         public HttpResponseMessage GetAllContainerSubscriptions([FromUri] string appName, [FromUri] string containerName)
         {
-
             #region Verificar Header
             var discoverHeader = Request.Headers.GetValues("somiod-discover");
 

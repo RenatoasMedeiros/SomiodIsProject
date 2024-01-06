@@ -91,19 +91,18 @@ namespace Middleware.Controllers
 
                     using (var writer = new StringWriter())
                     {
-                        var serializer = new XmlSerializer(typeof(List<Data>));
+                        var serializer = new XmlSerializer(typeof(List<Container>));
                         serializer.Serialize(writer, containers);
                         var xmlString = writer.ToString();
 
                         var xmlDoc = new XmlDocument();
                         xmlDoc.LoadXml(xmlString);
 
-                        foreach (XmlNode dataNode in xmlDoc.SelectNodes("//Data"))
+                        foreach (XmlNode containerNode in xmlDoc.SelectNodes("//Container"))
                         {
-                            dataNode.RemoveChild(dataNode.SelectSingleNode("Id"));
-                            dataNode.RemoveChild(dataNode.SelectSingleNode("Content"));
-                            dataNode.RemoveChild(dataNode.SelectSingleNode("Creation_dt"));
-                            dataNode.RemoveChild(dataNode.SelectSingleNode("Parent"));
+                            containerNode.RemoveChild(containerNode.SelectSingleNode("Id"));
+                            containerNode.RemoveChild(containerNode.SelectSingleNode("Creation_dt"));
+                            containerNode.RemoveChild(containerNode.SelectSingleNode("Parent"));
                         }
                         response.Content = new StringContent(xmlDoc.OuterXml, Encoding.UTF8, "application/xml");
                     }

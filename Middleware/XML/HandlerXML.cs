@@ -7,6 +7,7 @@ using System.Xml;
 using System.Xml.Schema;
 
 
+
 namespace Middleware.XML
 {
     public class HandlerXML
@@ -298,9 +299,9 @@ namespace Middleware.XML
 
         #region XML handler
 
-        // Verifica se a string tem formato válido XML
         public bool IsValidXML(string input)
         {
+            // verifica primeiro se a string não vem vazia.
             if (string.IsNullOrEmpty(input))
             {
                 return false;

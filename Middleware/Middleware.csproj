@@ -146,16 +146,13 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
-    <None Include="XML\Schema\application.xsd">
-      <SubType>Designer</SubType>
-    </None>
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
     <None Include="Web.Release.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
-    <None Include="XML\Schema\containers.xsd">
+    <None Include="XML\Schema\application.xsd">
       <SubType>Designer</SubType>
     </None>
     <None Include="XML\Schema\data.xsd">
