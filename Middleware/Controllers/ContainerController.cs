@@ -24,9 +24,8 @@ namespace Middleware.Controllers
         string connectionString = Properties.Settings.Default.ConnStr;
 
         // GET api/somiod/app
-        //Return XML
         [HttpGet]
-        [Route("api/somiod/applications/{application}/containers")]
+        [Route("api/somiod/{application}/containers")]
         public HttpResponseMessage GetAllContainers([FromUri] string application){
 
             List<Container> containers = new List<Container>();
@@ -121,9 +120,8 @@ namespace Middleware.Controllers
         }
 
         //Get apenas dos containers desta aplicação 
-        //Return XML
         [HttpGet]
-        [Route("api/somiod/applications/{application}/containers/{container}")]
+        [Route("api/somiod/{application}/containers/{container}")]
         public HttpResponseMessage GetContainer([FromUri] string container)
         {
 
@@ -184,7 +182,6 @@ namespace Middleware.Controllers
             }
             catch (Exception)
             {
-                //fechar a ligação à BD
                 if (conn.State == System.Data.ConnectionState.Open)
                 {
                     conn.Close();
@@ -195,7 +192,7 @@ namespace Middleware.Controllers
 
         // POST Container
         [HttpPost]
-        [Route("api/somiod/applications/{application}/containers")]
+        [Route("api/somiod/{application}/containers")]
         public IHttpActionResult PostContainer(HttpRequestMessage request, string application)
         {
             #region Verificar Content
@@ -329,7 +326,7 @@ namespace Middleware.Controllers
 
         // PUT Container Alterar rotas
         [HttpPut]
-        [Route("api/somiod/applications/{application}/containers/{container}")]
+        [Route("api/somiod/{application}/containers/{container}")]
         public IHttpActionResult Put(HttpRequestMessage request, string container)
         {
             if (request.Content == null)
@@ -438,7 +435,7 @@ namespace Middleware.Controllers
 
         // DELETE api/<controller>/5
         [HttpDelete]
-        [Route("api/somiod/applications/{application}/containers/{container}")]
+        [Route("api/somiod/{application}/containers/{container}")]
 
         public IHttpActionResult Delete(HttpRequestMessage request, string container)
         {
