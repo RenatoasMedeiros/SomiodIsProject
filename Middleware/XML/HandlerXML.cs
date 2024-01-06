@@ -49,6 +49,13 @@ namespace Middleware.XML
 
             node.InnerXml += rawXml;
 
+            XmlNode resType = docTemp.SelectSingleNode("//res_type");
+
+            if (resType.InnerText != "application")
+                return false;
+
+            docTemp.LastChild.FirstChild.RemoveChild(resType);
+
             docTemp.Save(XmlFileTempPath);
 
             if (ValidateXML(XmlFileTempPath, XsdFilePathApplications))

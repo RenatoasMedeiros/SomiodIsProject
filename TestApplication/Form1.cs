@@ -65,5 +65,10 @@ namespace TestApplication
 
 
         }
+
+        private void pictureBoxLock_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }

@@ -51,6 +51,7 @@
             this.textBoxPin.Name = "textBoxPin";
             this.textBoxPin.Size = new System.Drawing.Size(162, 20);
             this.textBoxPin.TabIndex = 0;
+            this.textBoxPin.TextChanged += new System.EventHandler(this.textBoxPin_TextChanged);
             // 
             // button1
             // 
@@ -214,6 +215,7 @@
             this.Controls.Add(this.textBoxPin);
             this.Name = "Form1";
             this.Text = "Numpad";
+            this.Load += new System.EventHandler(this.Form1_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 
