@@ -1,29 +1,22 @@
 ﻿using RestSharp;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Net;
 using System.Text;
-using System.Threading.Tasks;
-using System.Web.Hosting;
 using System.Windows.Forms;
 using System.Xml;
 using uPLibrary.Networking.M2Mqtt;
 using uPLibrary.Networking.M2Mqtt.Messages;
 
 
+
 namespace TestApplication
 {
-    public partial class Form1 : Form
+    public partial class Lock : Form
     {
         RestClient client = new RestClient();
         string[] mStrTopicsInfo = { "lockingReport" };
-        MqttClient mosquittoClient = new MqttClient(IPAddress.Parse("127.0.0.1"));
+        MqttClient mosquittoClient = new MqttClient("127.0.0.1");
 
-        public Form1()
+        public Lock()
         {
              // 
             InitializeComponent();
@@ -104,8 +97,7 @@ namespace TestApplication
                 pictureBoxLock.Image = Properties.Resources.Locked;
             }
 
-            request = new RestRequest("http://localhost:61552/api/somiod/lock/lockingMechanism/data/lockedStatus", Method.Get);
-            request.AddHeader("somiod-discover", "data");
+            request = new RestRequest("http://localhost:61552/api/somiod/lock/lockingMechanism/data/lockingStatus", Method.Get);
             response = client.Execute(request);
 
             var status = response.Content;
@@ -126,7 +118,7 @@ namespace TestApplication
 
             mosquittoClient.MqttMsgPublishReceived += Client_MqttMsgPublishReceived;
 
-           byte[] qosLevels = { 1 };//QoS
+            byte[] qosLevels = { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE};
             mosquittoClient.Subscribe(mStrTopicsInfo, qosLevels);
 
         }
@@ -135,6 +127,8 @@ namespace TestApplication
         {
             string msg = Encoding.UTF8.GetString(e.Message);
             string topic = e.Topic;
+
+            
 
             this.Invoke((MethodInvoker)delegate { //CrossThread 
 

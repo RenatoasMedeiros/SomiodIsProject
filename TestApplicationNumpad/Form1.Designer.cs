@@ -40,7 +40,6 @@
             this.button9 = new System.Windows.Forms.Button();
             this.button0 = new System.Windows.Forms.Button();
             this.buttonClear = new System.Windows.Forms.Button();
-            this.buttonEnter = new System.Windows.Forms.Button();
             this.labelValidation = new System.Windows.Forms.Label();
             this.button10 = new System.Windows.Forms.Button();
             this.SuspendLayout();
@@ -162,16 +161,6 @@
             this.buttonClear.UseVisualStyleBackColor = true;
             this.buttonClear.Click += new System.EventHandler(this.buttonClear_Click);
             // 
-            // buttonEnter
-            // 
-            this.buttonEnter.Location = new System.Drawing.Point(151, 238);
-            this.buttonEnter.Name = "buttonEnter";
-            this.buttonEnter.Size = new System.Drawing.Size(50, 45);
-            this.buttonEnter.TabIndex = 12;
-            this.buttonEnter.Text = "Enter";
-            this.buttonEnter.UseVisualStyleBackColor = true;
-            this.buttonEnter.Click += new System.EventHandler(this.buttonEnter_Click);
-            // 
             // labelValidation
             // 
             this.labelValidation.AutoSize = true;
@@ -184,11 +173,11 @@
             // 
             // button10
             // 
-            this.button10.Location = new System.Drawing.Point(39, 289);
+            this.button10.Location = new System.Drawing.Point(151, 238);
             this.button10.Name = "button10";
-            this.button10.Size = new System.Drawing.Size(162, 45);
+            this.button10.Size = new System.Drawing.Size(50, 45);
             this.button10.TabIndex = 14;
-            this.button10.Text = "Lock";
+            this.button10.Text = "Enter";
             this.button10.UseVisualStyleBackColor = true;
             this.button10.Click += new System.EventHandler(this.button10_Click);
             // 
@@ -199,7 +188,6 @@
             this.ClientSize = new System.Drawing.Size(235, 365);
             this.Controls.Add(this.button10);
             this.Controls.Add(this.labelValidation);
-            this.Controls.Add(this.buttonEnter);
             this.Controls.Add(this.buttonClear);
             this.Controls.Add(this.button0);
             this.Controls.Add(this.button9);
@@ -214,6 +202,7 @@
             this.Controls.Add(this.textBoxPin);
             this.Name = "Form1";
             this.Text = "Numpad";
+            this.Load += new System.EventHandler(this.Form1_Load_1);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -233,7 +222,6 @@
         private System.Windows.Forms.Button button9;
         private System.Windows.Forms.Button button0;
         private System.Windows.Forms.Button buttonClear;
-        private System.Windows.Forms.Button buttonEnter;
         private System.Windows.Forms.Label labelValidation;
         private System.Windows.Forms.Button button10;
     }

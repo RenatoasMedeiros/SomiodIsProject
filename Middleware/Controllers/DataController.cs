@@ -534,7 +534,7 @@ namespace Middleware.Controllers
                     try
                     {
 
-                        command.Connection.Open();
+                        cmd.Connection.Open();
                         SqlDataReader reader = cmd.ExecuteReader();
                         while (reader.Read())
                         {

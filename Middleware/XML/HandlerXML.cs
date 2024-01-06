@@ -58,7 +58,7 @@ namespace Middleware.XML
             if (resType.InnerText != "application")
                 return false;
 
-            docTemp.LastChild.FirstChild.RemoveChild(resType);
+            docTemp.LastChild.LastChild.LastChild.RemoveChild(resType);
 
             docTemp.Save(XmlFileTempPath);
 
@@ -234,12 +234,26 @@ namespace Middleware.XML
 
             node.InnerXml += XML;
 
-            XmlNode resType = docTemp.SelectSingleNode("//res_type");
+            XmlNode resType = docTemp.LastChild.LastChild.SelectSingleNode("//res_type");
 
             if (resType.InnerText != "data")
                 return false;
 
-            docTemp.LastChild.FirstChild.RemoveChild(resType);
+            // Obtém o nó pai do nó "res_type"
+            XmlNode parentNode = resType.ParentNode;
+
+            // Remove o nó "res_type" do seu pai
+            if (parentNode != null)
+            {
+                parentNode.RemoveChild(resType);
+
+                docTemp.Save(XmlFileTempPath);
+
+                if (ValidateXML(XmlFileTempPath, XsdFilePathData))
+                {
+                    return true;
+                }
+            }
 
             docTemp.Save(XmlFileTempPath);
 
@@ -256,35 +270,6 @@ namespace Middleware.XML
         #endregion
 
         #region XML Subscriptions handler
-
-        // Faz tratamento dos dados do request retorna uma nova subscription 
-        public Subscription SubscriptionRequest()
-        {
-            XmlDocument doc = new XmlDocument();
-            Subscription subscription = new Subscription();
-            doc.Load(XmlFileTempPath);
-
-            XmlNode node = doc.SelectSingleNode("//somiod/subscription");
-            if (node.SelectSingleNode("name") != null)
-            {
-                subscription.Name = node.SelectSingleNode("name").InnerText;
-            }
-
-            if (node.SelectSingleNode("event") != null)
-            {
-                subscription.Event = node.SelectSingleNode("event").InnerText;
-            }
-
-            if (node.SelectSingleNode("endpoint") != null)
-            {
-                subscription.Endpoint = node.SelectSingleNode("endpoint").InnerText;
-            }
-
-            RefreshTempFile();
-            return subscription;
-        }
-
-
 
         public bool ValidateSubscriptionsSchemaXML(string rawXml)
         {
@@ -314,8 +299,32 @@ namespace Middleware.XML
             return false;
         }
 
+        // Faz tratamento dos dados do request retorna uma nova subscription 
+        public Subscription SubscriptionRequest()
+        {
+            XmlDocument doc = new XmlDocument();
+            Subscription subscription = new Subscription();
+            doc.Load(XmlFileTempPath);
 
+            XmlNode node = doc.SelectSingleNode("//somiod/subscription");
+            if (node.SelectSingleNode("name") != null)
+            {
+                subscription.Name = node.SelectSingleNode("name").InnerText;
+            }
 
+            if (node.SelectSingleNode("event") != null)
+            {
+                subscription.Event = node.SelectSingleNode("event").InnerText;
+            }
+
+            if (node.SelectSingleNode("endpoint") != null)
+            {
+                subscription.Endpoint = node.SelectSingleNode("endpoint").InnerText;
+            }
+
+            RefreshTempFile();
+            return subscription;
+        }
 
         #endregion
 

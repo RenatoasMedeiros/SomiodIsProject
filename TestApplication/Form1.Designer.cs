@@ -1,6 +1,6 @@
 ﻿namespace TestApplication
 {
-    partial class Form1
+    partial class Lock
     {
         /// <summary>
         /// Required designer variable.
@@ -28,7 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Lock));
             this.pictureBoxLock = new System.Windows.Forms.PictureBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxLock)).BeginInit();
             this.SuspendLayout();
@@ -43,13 +43,13 @@
             this.pictureBoxLock.TabIndex = 0;
             this.pictureBoxLock.TabStop = false;
             // 
-            // Form1
+            // Lock
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(570, 820);
             this.Controls.Add(this.pictureBoxLock);
-            this.Name = "Form1";
+            this.Name = "Lock";
             this.Text = "Lock";
             this.Load += new System.EventHandler(this.Form1_Load);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxLock)).EndInit();
