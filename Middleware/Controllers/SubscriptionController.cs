@@ -26,6 +26,7 @@ namespace Middleware.Controllers
         [Route("api/somiod/applications/containers/subscriptions")]
         public IEnumerable<Subscription> GetAllSubscriptions()
         {
+            
             // criar lista vazia de subscriptions.
             List<Subscription> subscriptions = new List<Subscription>();
             string sql = "SELECT * FROM Subscriptions ORDER BY Id";
@@ -73,9 +74,9 @@ namespace Middleware.Controllers
         // Get all subscriptions from a certain container from a certain application
         [HttpGet]
         [Route("api/somiod/applications/{appName}/containers/{containerName}/subscriptions")]
-        public HttpResponseMessage GetAllContainerSubscriptions([FromUri] string appName, string containerName)
+        public HttpResponseMessage GetAllContainerSubscriptions([FromUri] string appName, [FromUri] string containerName)
         {
-            List<Subscription> subscriptions = new List<Subscription>();
+            
             #region Verificar Header
             var discoverHeader = Request.Headers.GetValues("somiod-discover");
 
@@ -85,7 +86,7 @@ namespace Middleware.Controllers
             }
             #endregion
 
-
+            List<Subscription> subscriptions = new List<Subscription>();
             int appId = -1; // id da application detetada.
             int containerId = -1; // id do container detetado.
 
@@ -216,6 +217,16 @@ namespace Middleware.Controllers
         [Route("api/somiod/{appName}/subscriptions")]
         public HttpResponseMessage GetAllApplicationSubscriptions([FromUri] string appName)
         {
+
+            #region Verificar Header
+            var discoverHeader = Request.Headers.GetValues("somiod-discover");
+
+            if (discoverHeader == null || !discoverHeader.Contains("subscription"))
+            {
+                return Request.CreateResponse(HttpStatusCode.BadRequest, "Error - There was an error in the Request");
+            }
+            #endregion
+
             List<Subscription> subscriptions = new List<Subscription>();
             SqlConnection connection = null;
 
@@ -270,6 +281,8 @@ namespace Middleware.Controllers
                         subscriptionNode.RemoveChild(subscriptionNode.SelectSingleNode("Id"));
                         subscriptionNode.RemoveChild(subscriptionNode.SelectSingleNode("Creation_dt"));
                         subscriptionNode.RemoveChild(subscriptionNode.SelectSingleNode("Parent"));
+                        subscriptionNode.RemoveChild(subscriptionNode.SelectSingleNode("Event"));
+                        subscriptionNode.RemoveChild(subscriptionNode.SelectSingleNode("Endpoint"));
                     }
 
                     response.Content = new StringContent(xmlDoc.OuterXml, Encoding.UTF8, "application/xml");
