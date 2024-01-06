@@ -20,7 +20,7 @@
 			</xs:extension>
 		</xs:complexContent>
 	</xs:complexType>
-	
+
 	<xs:complexType name="somiod">
 		<xs:sequence>
 			<xs:element name="subscription" type="subscriptionType" maxOccurs="unbounded"/>
