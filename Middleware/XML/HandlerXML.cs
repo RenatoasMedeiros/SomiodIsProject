@@ -45,20 +45,11 @@ namespace Middleware.XML
             docTemp.Load(XmlFileTempPath);
 
             XmlNode node = docTemp.SelectSingleNode("//somiod");
-
             node.InnerXml += rawXml;
-
-            XmlNode resType = docTemp.SelectSingleNode("//res_type");
-
-            if (resType.InnerText != "application")
-                return false;
-
-            docTemp.LastChild.FirstChild.RemoveChild(resType);
 
             docTemp.Save(XmlFileTempPath);
 
-            if (ValidateXML(XmlFileTempPath, XsdFilePathApplications))
-            {
+            if (ValidateXML(XmlFileTempPath, XsdFilePathApplications)) {
                 return true;
             }
 
