@@ -16,5 +16,10 @@ namespace TestApplication
         {
             InitializeComponent();
         }
+
+        private void pictureBoxLock_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }
