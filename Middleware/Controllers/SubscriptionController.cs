@@ -8,7 +8,10 @@ using System.Net;
 using System.Net.Http;
 using System.Web.Http;
 using Middleware.XML;
-
+using System.Xml;
+using System.IO;
+using System.Xml.Serialization;
+using System.Text;
 
 namespace Middleware.Controllers
 {
@@ -65,6 +68,226 @@ namespace Middleware.Controllers
             }
             
         }
+
+
+        // Get all subscriptions from a certain container from a certain application
+        [HttpGet]
+        [Route("api/somiod/applications/{appName}/containers/{containerName}/subscriptions")]
+        public HttpResponseMessage GetAllContainerSubscriptions([FromUri] string appName, string containerName)
+        {
+            List<Subscription> subscriptions = new List<Subscription>();
+            #region Verificar Header
+            var discoverHeader = Request.Headers.GetValues("somiod-discover");
+
+            if (discoverHeader == null || !discoverHeader.Contains("subscription"))
+            {
+                return Request.CreateResponse(HttpStatusCode.BadRequest, "Error - There was an error in the Request");
+            }
+            #endregion
+
+
+            int appId = -1; // id da application detetada.
+            int containerId = -1; // id do container detetado.
+
+            using(SqlConnection connection = new SqlConnection(connectionString))
+            {
+                // query para verificar se application existe
+                string sqlSelectApplication = "SELECT Id FROM Applications WHERE UPPER(Name) = UPPER(@AppName)";
+                SqlCommand cmd = new SqlCommand(sqlSelectApplication, connection);
+                cmd.Parameters.AddWithValue("@Name", appName);
+                try
+                {
+                    cmd.Connection.Open();
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            appId = (int)reader["Id"];
+                        }
+                        reader.Close();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return Request.CreateResponse(HttpStatusCode.InternalServerError, "Error - There was an error : " + ex);
+                }
+
+                // Se o appId se mantiver em '-1', então não foi encontrada nenhuma aplicação.
+                if (appId == -1)
+                {
+                    connection.Close();
+                    Debug.Print("[DEBUG] 'Applications does not exist' | Post() in SubscriptionController");
+                    return Request.CreateResponse(HttpStatusCode.InternalServerError, "Error - Application does not exist.");
+                }
+
+                // query para verificar se o container existe
+                string sqlSelectContainer = "SELECT Id, Name FROM Containers WHERE UPPER(Name) = UPPER(@ContainerName) and Parent = @AppId";
+
+                // executar a query do container
+                SqlCommand cmdContainer = new SqlCommand(sqlSelectContainer, connection);
+                cmdContainer.Parameters.AddWithValue("@Name", containerName);
+                cmdContainer.Parameters.AddWithValue("@AppId", appId);
+                try
+                {
+                    cmdContainer.Connection.Open();
+                    SqlDataReader reader = cmdContainer.ExecuteReader();
+
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            containerId = (int)reader["Id"];
+                        }
+                        reader.Close();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return Request.CreateResponse(HttpStatusCode.InternalServerError, "Error - There was an error : " + ex);
+                }
+
+                // msg de erro do container
+                if (containerId == -1)
+                {
+                    connection.Close();
+                    Debug.Print("[DEBUG] 'Container does not exist in this application' | Post() in SubscriptionController");
+                    return Request.CreateResponse(HttpStatusCode.InternalServerError, "Error - Container does not exist.");
+                }
+
+                // query para dar fetch dos subscriptions do container detetado
+                string sqlSelectSubscriptions = "SELECT * From Subscriptions WHERE Parent = @ParentId";
+                SqlCommand cmdSubscriptions = new SqlCommand(sqlSelectSubscriptions, connection);
+                cmdSubscriptions.Parameters.AddWithValue("@ParentId", containerId);
+
+
+                try
+                {
+                    SqlDataReader reader = cmdSubscriptions.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        Subscription s = new Subscription
+                        {
+                            Name = (string)reader["Name"],
+                        };
+                        subscriptions.Add(s);
+
+                    }
+                    reader.Close();
+                    connection.Close();
+
+                    var response = Request.CreateResponse(HttpStatusCode.OK);
+
+                    using (var writer = new StringWriter())
+                    {
+                        var serializer = new XmlSerializer(typeof(List<Container>));
+                        serializer.Serialize(writer, subscriptions);
+                        var xmlString = writer.ToString();
+
+                        var xmlDoc = new XmlDocument();
+                        xmlDoc.LoadXml(xmlString);
+
+                        foreach (XmlNode containerNode in xmlDoc.SelectNodes("//Subscription"))
+                        {
+                            containerNode.RemoveChild(containerNode.SelectSingleNode("Id"));
+                            containerNode.RemoveChild(containerNode.SelectSingleNode("Creation_dt"));
+                            containerNode.RemoveChild(containerNode.SelectSingleNode("Parent"));
+                        }
+                        response.Content = new StringContent(xmlDoc.OuterXml, Encoding.UTF8, "application/xml");
+                    }
+
+                    return response;
+                }
+                catch (Exception ex)
+                {
+                    if (connection.State == System.Data.ConnectionState.Open)
+                    {
+                        connection.Close();
+                    }
+                    return Request.CreateResponse(HttpStatusCode.InternalServerError, "Error - There was an error : " + ex);
+                }
+            }
+
+        }
+
+
+        [HttpGet]
+        [Route("api/somiod/{appName}/subscriptions")]
+        public HttpResponseMessage GetAllApplicationSubscriptions([FromUri] string appName)
+        {
+            List<Subscription> subscriptions = new List<Subscription>();
+            SqlConnection connection = null;
+
+            try
+            {
+                using (connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    string sqlSelectSubscriptions = @"
+                    SELECT s.* 
+                    FROM Subscriptions s
+                    INNER JOIN Containers c ON s.Parent = c.Id
+                    INNER JOIN Applications a ON c.parent = a.Id
+                    WHERE a.name = @AppName
+                    ORDER BY s.Id";
+
+                    SqlCommand cmdSubscriptions = new SqlCommand(sqlSelectSubscriptions, connection);
+                    cmdSubscriptions.Parameters.AddWithValue("@AppName", appName);
+
+                    SqlDataReader reader = cmdSubscriptions.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        Subscription s = new Subscription
+                        {
+                            Id = (int)reader["Id"],
+                            Name = (string)reader["Name"],
+                            Creation_dt = (DateTime)reader["Creation_dt"],
+                            Parent = (int)reader["Parent"],
+                            Event = (string)reader["Event"],
+                            Endpoint = (string)reader["Endpoint"]
+                        };
+                        subscriptions.Add(s);
+                    }
+                    reader.Close();
+                }
+
+                var response = Request.CreateResponse(HttpStatusCode.OK);
+
+                using (var writer = new StringWriter())
+                {
+                    var serializer = new XmlSerializer(typeof(List<Subscription>));
+                    serializer.Serialize(writer, subscriptions);
+                    var xmlString = writer.ToString();
+
+                    var xmlDoc = new XmlDocument();
+                    xmlDoc.LoadXml(xmlString);
+
+                    // Remover os elementos do XML que não interessam
+                    foreach (XmlNode subscriptionNode in xmlDoc.SelectNodes("//Subscription"))
+                    {
+                        subscriptionNode.RemoveChild(subscriptionNode.SelectSingleNode("Id"));
+                        subscriptionNode.RemoveChild(subscriptionNode.SelectSingleNode("Creation_dt"));
+                        subscriptionNode.RemoveChild(subscriptionNode.SelectSingleNode("Parent"));
+                    }
+
+                    response.Content = new StringContent(xmlDoc.OuterXml, Encoding.UTF8, "application/xml");
+                }
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                if (connection?.State == System.Data.ConnectionState.Open)
+                {
+                    connection.Close();
+                }
+                return Request.CreateResponse(HttpStatusCode.InternalServerError, "Error - There was an error : " + ex);
+            }
+        }
+
+
         #endregion
 
         #region POST
@@ -101,8 +324,6 @@ namespace Middleware.Controllers
             // Verificar se o xml está de acordo com o schema.
             if (!handler.ValidateSubscriptionsSchemaXML(rawXml))
             {
-                // TODO: verificação do isValidDataSchemaXMl... 
-
                 Debug.Print("[DEBUG] 'Invalid Schema in XML' | Post() in SubscriptionController");
                 return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
             }
@@ -177,9 +398,6 @@ namespace Middleware.Controllers
                 }
                 return InternalServerError();
             }
-
-            
-
 
             // Criação da nova subscription após as verificações XML serem feitas
             Subscription subscription = handler.SubscriptionRequest();

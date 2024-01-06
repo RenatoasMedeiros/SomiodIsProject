@@ -204,7 +204,7 @@ namespace Middleware.XML
 
             XmlNode resType = docTemp.SelectSingleNode("//res_type");
 
-            if(resType.InnerText != "container")
+            if(resType.InnerText != "subscription")
                 return false;
 
             docTemp.LastChild.FirstChild.RemoveChild(resType);
