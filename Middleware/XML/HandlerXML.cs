@@ -87,92 +87,6 @@ namespace Middleware.XML
         #endregion
 
         #region XML Data handler
-        // funções para os datas
-
-        #endregion
-
-        #region XML Subscriptions handler
-
-
-        public bool ValidateSubscriptionsSchemaXML(string rawXml)
-        {
-            XmlDocument docTemp = new XmlDocument();
-            docTemp.Load(XmlFileTempPath);
-            XmlNode node = docTemp.SelectSingleNode("//somiod");
-
-            node.InnerXml += rawXml;
-
-            docTemp.Save(XmlFileTempPath);
-
-            // If valid Schema in XML 
-            if (ValidateXML(XmlFileTempPath, XsdFilePathSubscriptions))
-            {
-                return true;
-            }
-
-            Debug.Print("[DEBUG] 'Invalid Schema in XML' | IsValidSubscriptionsSchemaXML() in HandlerXML");
-            RefreshTempFile();
-            return false;
-        }
-
-
-        #endregion
-
-        #region Compare XML with XML Schema (xsd)
-
-        public string ContainerRequest()
-        {
-            XmlDocument docTemp = new XmlDocument();
-            docTemp.Load(XmlFileTempPath);
-
-            string container = docTemp.SelectSingleNode("//somiod/container/name").InnerText;
-
-            RefreshTempFile();
-
-            return container;
-        }
-
-
-        #endregion
-
-        #region XML Containers handler
-        // funções para os containers
-
-        public string ContainerRequest()
-        {
-            XmlDocument docTemp = new XmlDocument();
-            docTemp.Load(XmlFileTempPath);
-
-            string container = docTemp.SelectSingleNode("//somiod/container/name").InnerText;
-
-            RefreshTempFile();
-
-            return container;
-        }
-        #endregion
-
-        #region XML Data handler
-
-        // Valida o Schema do Data
-        public bool ValidateDataSchemaXML(string rawXml)
-        {
-            XmlDocument docTemp = new XmlDocument();
-            docTemp.Load(XmlFileTempPath);
-            XmlNode node = docTemp.SelectSingleNode("//somiod");
-
-            node.InnerXml += rawXml;
-
-            docTemp.Save(XmlFileTempPath);
-
-            if (ValidateXML(XmlFileTempPath, XsdFilePathData))
-            {
-                return true;
-            }
-
-            Debug.Print("[DEBUG] 'Invalid Schema in XML' | ValidateDataSchemaXML() in HandlerXML");
-            RefreshTempFile();
-            return false;
-        }
 
         // Analisa e extrai dados relevantes para processos subsequentes
 
@@ -201,6 +115,68 @@ namespace Middleware.XML
             return data;
         }
 
+        // Valida o Schema do Data
+        public bool ValidateDataSchemaXML(string rawXml)
+        {
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+            XmlNode node = docTemp.SelectSingleNode("//somiod");
+
+            node.InnerXml += rawXml;
+
+            docTemp.Save(XmlFileTempPath);
+
+            if (ValidateXML(XmlFileTempPath, XsdFilePathData))
+            {
+                return true;
+            }
+
+            Debug.Print("[DEBUG] 'Invalid Schema in XML' | ValidateDataSchemaXML() in HandlerXML");
+            RefreshTempFile();
+            return false;
+        }
+
+        #endregion
+
+        #region XML Subscriptions handler
+
+        public bool ValidateSubscriptionsSchemaXML(string rawXml)
+        {
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+            XmlNode node = docTemp.SelectSingleNode("//somiod");
+
+            node.InnerXml += rawXml;
+
+            docTemp.Save(XmlFileTempPath);
+
+            // If valid Schema in XML 
+            if (ValidateXML(XmlFileTempPath, XsdFilePathSubscriptions))
+            {
+                return true;
+            }
+
+            Debug.Print("[DEBUG] 'Invalid Schema in XML' | IsValidSubscriptionsSchemaXML() in HandlerXML");
+            RefreshTempFile();
+            return false;
+        }
+
+        #endregion
+
+        #region XML Containers handler
+        // funções para os containers
+
+        public string ContainerRequest()
+        {
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+
+            string container = docTemp.SelectSingleNode("//somiod/container/name").InnerText;
+
+            RefreshTempFile();
+
+            return container;
+        }
         #endregion
 
         #region XML Subscriptions handler
