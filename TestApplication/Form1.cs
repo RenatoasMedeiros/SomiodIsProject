@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web.Hosting;
@@ -13,13 +14,14 @@ using System.Xml;
 using uPLibrary.Networking.M2Mqtt;
 using uPLibrary.Networking.M2Mqtt.Messages;
 
+
 namespace TestApplication
 {
     public partial class Form1 : Form
     {
         RestClient client = new RestClient();
         string[] mStrTopicsInfo = { "lockingReport" };
-        MqttClient mosquittoClient = new MqttClient("127.0.0.1");
+        MqttClient mosquittoClient = new MqttClient(IPAddress.Parse("127.0.0.1"));
 
         public Form1()
         {
@@ -124,8 +126,7 @@ namespace TestApplication
 
             mosquittoClient.MqttMsgPublishReceived += Client_MqttMsgPublishReceived;
 
-           byte[] qosLevels = { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE,
-                MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE};//QoS
+           byte[] qosLevels = { 1 };//QoS
             mosquittoClient.Subscribe(mStrTopicsInfo, qosLevels);
 
         }

@@ -9,12 +9,15 @@ using System.Web.Http;
 using static System.Net.Mime.MediaTypeNames;
 using Middleware.Models;
 using System.Runtime.InteropServices;
-
+using System.ComponentModel;
 using Middleware.XML;
 using Swashbuckle.Swagger;
 using System.Threading;
 using uPLibrary.Networking.M2Mqtt;
 using System.Text;
+using System.IO;
+using System.Xml.Serialization;
+using System.Xml;
 
 namespace Middleware.Controllers
 {
@@ -29,10 +32,23 @@ namespace Middleware.Controllers
         public HttpResponseMessage GetAllData(string application)
         {
             List<Data> data = new List<Data>();
-            string sql = "SELECT d.* FROM Data d " +
-                 "JOIN Containers c ON d.parent = c.id " +
-                 "JOIN Applications a ON c.parent = a.id " +
-                 "WHERE a.name = @Application";
+
+            #region Verificar Header
+            var discoverHeader = Request.Headers.GetValues("somiod-discover");
+
+            if (discoverHeader == null || !discoverHeader.Contains("data"))
+            {
+                return Request.CreateResponse(HttpStatusCode.BadRequest, "Error - There was an error in the Request");
+            }
+            #endregion
+
+            string sql = @"
+                    SELECT d.* 
+                    FROM Data d
+                    INNER JOIN Containers c ON d.Parent = c.Id
+                    INNER JOIN Applications a ON c.parent = a.Id
+                    WHERE a.name = @Application
+                    ORDER BY d.Id";
 
             SqlConnection conn = null;
 
@@ -42,6 +58,7 @@ namespace Middleware.Controllers
                 conn.Open();
                 SqlCommand cmd = new SqlCommand(sql, conn);
                 cmd.Parameters.AddWithValue("@Application", application);
+
                 SqlDataReader reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
@@ -55,11 +72,29 @@ namespace Middleware.Controllers
                 conn.Close();
 
                 var response = Request.CreateResponse(HttpStatusCode.OK, data);
-                response.Content = new ObjectContent<List<Data>>(data, new System.Net.Http.Formatting.XmlMediaTypeFormatter());
+
+                using (var writer = new StringWriter())
+                {
+                    var serializer = new XmlSerializer(typeof(List<Data>));
+                    serializer.Serialize(writer, data);
+                    var xmlString = writer.ToString();
+
+                    var xmlDoc = new XmlDocument();
+                    xmlDoc.LoadXml(xmlString);
+
+                    foreach (XmlNode containerNode in xmlDoc.SelectNodes("//Data"))
+                    {
+                        containerNode.RemoveChild(containerNode.SelectSingleNode("Id"));
+                        containerNode.RemoveChild(containerNode.SelectSingleNode("Creation_dt"));
+                        containerNode.RemoveChild(containerNode.SelectSingleNode("Parent"));
+                    }
+                    response.Content = new StringContent(xmlDoc.OuterXml, Encoding.UTF8, "application/xml");
+                }
 
                 return response;
 
             }
+
             catch (Exception ex)
             {
                 Debug.Print("[DEBUG] 'Exception on Get() method in DataController' | " + ex.Message);
@@ -151,13 +186,6 @@ namespace Middleware.Controllers
             string requestXML = requestNewData.Content.ReadAsStringAsync().Result
                 .Replace(System.Environment.NewLine, String.Empty);
             Debug.Print(requestXML);
-
-            if (requestXML == null)
-            {
-                Debug.Print("newData:" + requestNewData.Content.ReadAsStringAsync().Result + " is null");
-                return BadRequest("Invalid new data. The request body cannot be empty!");
-
-            }
 
             if (!handler.IsValidXML(requestXML))
             {
@@ -254,7 +282,7 @@ namespace Middleware.Controllers
                 // erro se não houver subscriptions
                 if (subscriptions.Count == 0)
                 {
-                    return BadRequest();
+                    return Content(HttpStatusCode.BadRequest, "It doesn't exit any subscriptions, create one first!", Configuration.Formatters.XmlFormatter);
                 }
                 else
                 {
@@ -306,7 +334,7 @@ namespace Middleware.Controllers
 
                     if (rowsAffected > 0)
                     {
-                        return Ok();
+                        return Content(HttpStatusCode.OK, "Data created successfully", Configuration.Formatters.XmlFormatter);
                     }
 
                     return InternalServerError();
@@ -472,13 +500,14 @@ namespace Middleware.Controllers
 
                             while (reader.Read())
                             {
-                                data.Id = (int)reader["Id"];
-                                data.Name = (string)reader["Name"];
-                                data.Content = (string)reader["Content"];
+                                dataId = (int)reader["Id"];
                                 data.Parent = (int)reader["Parent"];
                             }
                             reader.Close();
+                            command.Connection.Close();
                         }
+
+                        data.Id = dataId;
 
                         if (dataId == -1)
                             return NotFound();
@@ -505,7 +534,7 @@ namespace Middleware.Controllers
                     try
                     {
 
-
+                        command.Connection.Open();
                         SqlDataReader reader = cmd.ExecuteReader();
                         while (reader.Read())
                         {

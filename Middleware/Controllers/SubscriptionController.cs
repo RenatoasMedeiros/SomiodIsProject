@@ -12,6 +12,7 @@ using System.Xml;
 using System.IO;
 using System.Xml.Serialization;
 using System.Text;
+using System.Web.Services.Description;
 
 namespace Middleware.Controllers
 {
@@ -267,6 +268,7 @@ namespace Middleware.Controllers
             }
             #endregion
 
+            // lista de subscrições a retornar na resposta
             List<Subscription> subscriptions = new List<Subscription>();
             SqlConnection connection = null;
 
@@ -276,6 +278,7 @@ namespace Middleware.Controllers
                 {
                     connection.Open();
 
+                    // sql
                     string sqlSelectSubscriptions = @"
                     SELECT s.* 
                     FROM Subscriptions s
@@ -284,6 +287,7 @@ namespace Middleware.Controllers
                     WHERE a.name = @AppName
                     ORDER BY s.Id";
 
+                    // command e parameters
                     SqlCommand cmdSubscriptions = new SqlCommand(sqlSelectSubscriptions, connection);
                     cmdSubscriptions.Parameters.AddWithValue("@AppName", appName);
 
@@ -373,8 +377,6 @@ namespace Middleware.Controllers
                 Debug.Print("[DEBUG] 'Invalid Schema in XML' | Post() in SubscriptionController");
                 return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
             }
-
-
 
             // Verificar se application ou container estão guardados na BD.
             string sqlApplication = "SELECT Id FROM Applications WHERE UPPER(Name) = UPPER(@AppName)";
