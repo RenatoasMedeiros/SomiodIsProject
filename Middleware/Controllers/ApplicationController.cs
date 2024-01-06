@@ -40,19 +40,19 @@ namespace Middleware.Controllers
             }
         }
 
-        // GET: api/Application/1
+        // GET: api/Application/nome
         [HttpGet]
-        [Route("api/somiod/applications/{name}")]
-        public IHttpActionResult GetApplication(string name)
+        [Route("api/somiod/{name}")]
+        public HttpResponseMessage GetApplication(string name)
         {
             Application application = GetApplicationByName(name);
             if (application != null)
             {
                 var response = Request.CreateResponse(application);
                 response.Content = new ObjectContent<Application>(application, new System.Net.Http.Formatting.XmlMediaTypeFormatter());
-                return Ok(response);
+                return response;
             }
-            return NotFound();
+            return null;
         }
 
         [HttpPost]
@@ -401,9 +401,9 @@ namespace Middleware.Controllers
                             {
                                 return new Application
                                 {
-                                    //Id = (int)reader["Id"],
-                                    Name = (string)reader["Name"],
-                                    //Creation_dt = (DateTime)reader["Creation_dt"]
+                                    Id = (int)reader["Id"],
+                                    Name = (string)reader["name"],
+                                    Creation_dt = (DateTime)reader["creation_dt"]
                                 };
                             }
                             return null; // Application not found
