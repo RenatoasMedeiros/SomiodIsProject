@@ -18,9 +18,9 @@ namespace Middleware.Controllers
 
         #region Gets
 
-        //Get all subscriptions.
+        //Get all subscriptions from the database.
         [HttpGet]
-        [Route("api/somiod/subscriptions")]
+        [Route("api/somiod/applications/containers/subscriptions")]
         public IEnumerable<Subscription> GetAllSubscriptions()
         {
             // criar lista vazia de subscriptions.
@@ -72,7 +72,7 @@ namespace Middleware.Controllers
         // create new subscription.
         [HttpPost]
         [Route("api/somiod/{appName}/{containerName}/subscription")]
-        public IHttpActionResult Post( string appName,  string containerName, HttpRequestMessage request)
+        public IHttpActionResult Post(string appName,  string containerName, HttpRequestMessage request)
         {
 
             #region Verificar Header

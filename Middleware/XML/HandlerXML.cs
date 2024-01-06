@@ -146,6 +146,45 @@ namespace Middleware.XML
         #region XML Containers handler
         // funções para os containers
 
+        public bool IsValidContainerSchema(string XML)
+        {
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+
+            XmlNode node = docTemp.SelectSingleNode("//somiod");
+
+            node.InnerXml += XML;
+
+            XmlNode resType = docTemp.SelectSingleNode("//res_type");
+
+            if (resType.InnerText != "container")
+                return false;
+
+            docTemp.LastChild.FirstChild.RemoveChild(resType);
+
+            docTemp.Save(XmlFileTempPath);
+
+            if (ValidateXML(XmlFileTempPath, XsdFilePathContainers))
+            {
+                return true;
+            }
+
+            RefreshTempFile();
+            return false;
+        }
+
+        public string ContainerRequest()
+        {
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+
+            string container = docTemp.SelectSingleNode("//somiod/container/name").InnerText;
+
+            RefreshTempFile();
+
+            return container;
+        }
+
         #endregion
 
         #region XML Data handler
@@ -154,7 +193,6 @@ namespace Middleware.XML
         #endregion
 
         #region XML Subscriptions handler
-
 
         public bool ValidateSubscriptionsSchemaXML(string rawXml)
         {
@@ -189,17 +227,7 @@ namespace Middleware.XML
 
         #region Compare XML with XML Schema (xsd)
 
-        public string ContainerRequest()
-        {
-            XmlDocument docTemp = new XmlDocument();
-            docTemp.Load(XmlFileTempPath);
 
-            string container = docTemp.SelectSingleNode("//somiod/container/name").InnerText;
-
-            RefreshTempFile();
-
-            return container;
-        }
         #endregion
 
         #region XML Data handler

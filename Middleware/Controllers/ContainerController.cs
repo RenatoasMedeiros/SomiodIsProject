@@ -27,11 +27,11 @@ namespace Middleware.Controllers
         //Return XML
         [HttpGet]
         [Route("api/somiod/applications/{application}/containers")]
-        public HttpResponseMessage GetAllContainers([FromUri] string application){
+        public HttpResponseMessage GetAllContainers([FromUri] string application)
+        {
 
             List<Container> containers = new List<Container>();
             #region Verificar Header
-
             var discoverHeader = Request.Headers.GetValues("somiod-discover");
 
             if (discoverHeader == null || !discoverHeader.Contains("container"))
@@ -85,7 +85,7 @@ namespace Middleware.Controllers
                     }
                     reader.Close();
                     connection.Close();
-                    
+
                     var response = Request.CreateResponse(HttpStatusCode.OK);
 
 
@@ -120,7 +120,7 @@ namespace Middleware.Controllers
             }
 
         }
-    
+
         public List<string> DiscoverContainers()
         {
             try
@@ -299,7 +299,7 @@ namespace Middleware.Controllers
                         return InternalServerError();
                     }
                 }
-               
+
 
                 Container container = new Container
                 {
@@ -356,6 +356,7 @@ namespace Middleware.Controllers
                         return InternalServerError();
                     }
                 }
+
             }
             catch (Exception ex)
             {
@@ -363,6 +364,8 @@ namespace Middleware.Controllers
                 Console.WriteLine($"Error discovering resources: {ex.Message}");
                 return InternalServerError();
             }
+
+
         }
 
         // PUT Container Alterar rotas
@@ -435,7 +438,7 @@ namespace Middleware.Controllers
                     return Content(HttpStatusCode.BadRequest, "Request is not XML", Configuration.Formatters.XmlFormatter);
                 }
 
-                if (!handler.ValidateDataSchemaXML(requestXML))
+                if (!handler.IsValidContainerSchema(requestXML))
                 {
                     return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
                 }
