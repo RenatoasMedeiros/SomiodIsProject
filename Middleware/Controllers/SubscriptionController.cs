@@ -19,14 +19,22 @@ namespace Middleware.Controllers
     {
         string connectionString = Properties.Settings.Default.ConnStr;
 
-        #region Gets
+        #region Get methods
 
-        //Get all subscriptions from the database.
+        #region Get all subscriptions from the database.
         [HttpGet]
         [Route("api/somiod/applications/containers/subscriptions")]
-        public IEnumerable<Subscription> GetAllSubscriptions()
+        public HttpResponseMessage GetAllSubscriptions()
         {
-            
+            #region Verificar Header
+            var discoverHeader = Request.Headers.GetValues("somiod-discover");
+
+            if (discoverHeader == null || !discoverHeader.Contains("subscription"))
+            {
+                return Request.CreateResponse(HttpStatusCode.BadRequest, "Error - There was an error in the Request");
+            }
+            #endregion
+
             // criar lista vazia de subscriptions.
             List<Subscription> subscriptions = new List<Subscription>();
             string sql = "SELECT * FROM Subscriptions ORDER BY Id";
@@ -56,7 +64,34 @@ namespace Middleware.Controllers
                 }
                 reader.Close();
                 conn.Close();
-                return subscriptions;
+
+                var response = Request.CreateResponse(HttpStatusCode.OK);
+
+                using (var writer = new StringWriter())
+                {
+                    var serializer = new XmlSerializer(typeof(List<Subscription>));
+                    serializer.Serialize(writer, subscriptions);
+                    var xmlString = writer.ToString();
+
+                    var xmlDoc = new XmlDocument();
+                    xmlDoc.LoadXml(xmlString);
+
+                    // Remover os elementos do XML que não interessam
+                    foreach (XmlNode subscriptionNode in xmlDoc.SelectNodes("//Subscription"))
+                    {
+                        subscriptionNode.RemoveChild(subscriptionNode.SelectSingleNode("Id"));
+                        subscriptionNode.RemoveChild(subscriptionNode.SelectSingleNode("Creation_dt"));
+                        subscriptionNode.RemoveChild(subscriptionNode.SelectSingleNode("Parent"));
+                        subscriptionNode.RemoveChild(subscriptionNode.SelectSingleNode("Event"));
+                        subscriptionNode.RemoveChild(subscriptionNode.SelectSingleNode("Endpoint"));
+                    }
+
+                    response.Content = new StringContent(xmlDoc.OuterXml, Encoding.UTF8, "application/xml");
+                }
+
+                return response;
+
+
             }
             catch (Exception ex)
             {
@@ -65,13 +100,16 @@ namespace Middleware.Controllers
                     conn.Close();
                     Debug.Print("[DEBUG] ERROR CONNECTING TO Database");
                 }
-                return subscriptions;
+                return Request.CreateResponse(HttpStatusCode.InternalServerError, "Error - There was an error : " + ex);
             }
             
+
+
         }
 
+        #endregion
 
-        // Get all subscriptions from a certain container from a certain application
+        #region Get all subscriptions from a certain container from a certain application
         [HttpGet]
         [Route("api/somiod/applications/{appName}/containers/{containerName}/subscriptions")]
         public HttpResponseMessage GetAllContainerSubscriptions([FromUri] string appName, [FromUri] string containerName)
@@ -212,7 +250,9 @@ namespace Middleware.Controllers
 
         }
 
+        #endregion
 
+        #region Get all subscriptions from an application.
         [HttpGet]
         [Route("api/somiod/{appName}/subscriptions")]
         public HttpResponseMessage GetAllApplicationSubscriptions([FromUri] string appName)
@@ -300,6 +340,8 @@ namespace Middleware.Controllers
             }
         }
 
+
+        #endregion
 
         #endregion
 
