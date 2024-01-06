@@ -159,5 +159,10 @@ namespace TestApplication
                 mosquittoClient.Disconnect(); //Free process and process's resources
             }
         }
+
+        private void pictureBoxLock_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }

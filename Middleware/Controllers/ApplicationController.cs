@@ -40,7 +40,7 @@ namespace Middleware.Controllers
             }
         }
 
-        // GET: api/Application/nome
+
         [HttpGet]
         [Route("api/somiod/{name}")]
         public HttpResponseMessage GetApplication(string name)

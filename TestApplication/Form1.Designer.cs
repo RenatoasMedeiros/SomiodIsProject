@@ -35,13 +35,13 @@
             // 
             // pictureBoxLock
             // 
-            this.pictureBoxLock.Image = global::TestApplication.Properties.Resources.Locked;
             this.pictureBoxLock.InitialImage = ((System.Drawing.Image)(resources.GetObject("pictureBoxLock.InitialImage")));
             this.pictureBoxLock.Location = new System.Drawing.Point(12, 12);
             this.pictureBoxLock.Name = "pictureBoxLock";
             this.pictureBoxLock.Size = new System.Drawing.Size(551, 768);
             this.pictureBoxLock.TabIndex = 0;
             this.pictureBoxLock.TabStop = false;
+            this.pictureBoxLock.Click += new System.EventHandler(this.pictureBoxLock_Click);
             // 
             // Form1
             // 
