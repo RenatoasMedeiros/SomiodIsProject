@@ -267,6 +267,7 @@ namespace Middleware.Controllers
             }
             #endregion
 
+            // lista de subscrições a retornar na resposta
             List<Subscription> subscriptions = new List<Subscription>();
             SqlConnection connection = null;
 
@@ -276,6 +277,7 @@ namespace Middleware.Controllers
                 {
                     connection.Open();
 
+                    // sql
                     string sqlSelectSubscriptions = @"
                     SELECT s.* 
                     FROM Subscriptions s
@@ -284,6 +286,7 @@ namespace Middleware.Controllers
                     WHERE a.name = @AppName
                     ORDER BY s.Id";
 
+                    // command e parameters
                     SqlCommand cmdSubscriptions = new SqlCommand(sqlSelectSubscriptions, connection);
                     cmdSubscriptions.Parameters.AddWithValue("@AppName", appName);
 
@@ -353,14 +356,7 @@ namespace Middleware.Controllers
         public IHttpActionResult Post(string appName,  string containerName, HttpRequestMessage request)
         {
 
-            #region Verificar Header
-            var discoverHeader = Request.Headers.GetValues("somiod-discover");
-
-            if (discoverHeader == null || !discoverHeader.Contains("subscription"))
-            {
-                return Content(HttpStatusCode.BadRequest, "Invalid or missing somiod-discover header.", Configuration.Formatters.XmlFormatter);
-            }
-            #endregion
+           
 
             // verificar se o XML do request é valido.
             HandlerXML handler = new HandlerXML();
@@ -382,8 +378,6 @@ namespace Middleware.Controllers
                 Debug.Print("[DEBUG] 'Invalid Schema in XML' | Post() in SubscriptionController");
                 return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
             }
-
-
 
             // Verificar se application ou container estão guardados na BD.
             string sqlApplication = "SELECT Id FROM Applications WHERE UPPER(Name) = UPPER(@AppName)";
