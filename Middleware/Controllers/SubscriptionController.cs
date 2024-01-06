@@ -104,6 +104,7 @@ namespace Middleware.Controllers
             }
 
 
+
         }
 
         #endregion
@@ -113,6 +114,7 @@ namespace Middleware.Controllers
         [Route("api/somiod/applications/{appName}/containers/{containerName}/subscriptions")]
         public HttpResponseMessage GetAllContainerSubscriptions([FromUri] string appName, [FromUri] string containerName)
         {
+
             #region Verificar Header
             var discoverHeader = Request.Headers.GetValues("somiod-discover");
 
@@ -353,6 +355,8 @@ namespace Middleware.Controllers
         [Route("api/somiod/{appName}/{containerName}/subscription")]
         public IHttpActionResult Post(string appName, string containerName, HttpRequestMessage request)
         {
+
+
 
             // verificar se o XML do request é valido.
             HandlerXML handler = new HandlerXML();

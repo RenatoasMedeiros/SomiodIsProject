@@ -39,22 +39,13 @@ namespace Middleware.XML
 
         #region XML Application handler
 
-        // Funções para as applications
-        public bool IsValidApplicationSchemaXML(string rawXml)
+        public bool ValidateApplicationSchemaXML(string rawXml)
         {
             XmlDocument docTemp = new XmlDocument();
             docTemp.Load(XmlFileTempPath);
 
             XmlNode node = docTemp.SelectSingleNode("//somiod");
-
             node.InnerXml += rawXml;
-
-            XmlNode resType = docTemp.SelectSingleNode("//res_type");
-
-            if (resType.InnerText != "application")
-                return false;
-
-            docTemp.LastChild.FirstChild.RemoveChild(resType);
 
             docTemp.Save(XmlFileTempPath);
 
@@ -68,7 +59,7 @@ namespace Middleware.XML
             return false;
         }
 
-        public string DealRequestApplication()
+        public string ApplicationRequest()
         {
             XmlDocument docTemp = new XmlDocument();
             docTemp.Load(XmlFileTempPath);
@@ -185,7 +176,6 @@ namespace Middleware.XML
             return false;
         }
 
-        // Faz tratamento dos dados do request retorna uma nova subscription 
         public Subscription SubscriptionRequest()
         {
             XmlDocument doc = new XmlDocument();
@@ -217,18 +207,6 @@ namespace Middleware.XML
         #region XML Containers handler
         // funções para os containers
 
-        public string ContainerRequest()
-        {
-            XmlDocument docTemp = new XmlDocument();
-            docTemp.Load(XmlFileTempPath);
-
-            string container = docTemp.SelectSingleNode("//somiod/container/name").InnerText;
-
-            RefreshTempFile();
-
-            return container;
-        }
-
         public bool ValidateContainerSchemaXML(string XML)
         {
             XmlDocument docTemp = new XmlDocument();
@@ -254,6 +232,18 @@ namespace Middleware.XML
 
             RefreshTempFile();
             return false;
+        }
+
+        public string ContainerRequest()
+        {
+            XmlDocument docTemp = new XmlDocument();
+            docTemp.Load(XmlFileTempPath);
+
+            string container = docTemp.SelectSingleNode("//somiod/container/name").InnerText;
+
+            RefreshTempFile();
+
+            return container;
         }
         #endregion
 

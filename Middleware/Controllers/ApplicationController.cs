@@ -15,6 +15,7 @@ namespace Middleware.Controllers
     {
         string connectionString = Properties.Settings.Default.ConnStr;
 
+
         // GET: api/Application
         [HttpGet]
         [Route("api/somiod")]
@@ -62,13 +63,13 @@ namespace Middleware.Controllers
 
             string rawXml = request.Content.ReadAsStringAsync().Result.Replace(System.Environment.NewLine, String.Empty);
 
-            if (!handler.IsValidXML(rawXml) || !handler.IsValidApplicationSchemaXML(rawXml))
+            if (!handler.IsValidXML(rawXml) || !handler.ValidateApplicationSchemaXML(rawXml))
             {
                 return Content(HttpStatusCode.BadRequest, "Invalid XML content or schema", Configuration.Formatters.XmlFormatter);
             }
 
             Application application = new Application();
-            application.Name = handler.DealRequestApplication();
+            application.Name = handler.ApplicationRequest();
 
             if (String.IsNullOrEmpty(application.Name))
             {
@@ -179,7 +180,7 @@ namespace Middleware.Controllers
             }
 
             // Verifica se o ficheiro XML está de acordo com o XSD
-            if (!handler.IsValidApplicationSchemaXML(rawXml))
+            if (!handler.ValidateApplicationSchemaXML(rawXml))
             {
                 Debug.Print("[DEBUG] 'Invalid Schema in XML' | Put() in ApplicationController");
                 return Content(HttpStatusCode.BadRequest, "Invalid Schema in XML", Configuration.Formatters.XmlFormatter);
@@ -188,7 +189,7 @@ namespace Middleware.Controllers
             // Começo o tratamento de dados
             Application application = new Application();
 
-            application.Name = handler.DealRequestApplication();
+            application.Name = handler.ApplicationRequest();
 
             if (String.IsNullOrEmpty(application.Name))
             {

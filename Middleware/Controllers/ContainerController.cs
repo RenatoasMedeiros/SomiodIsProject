@@ -24,9 +24,8 @@ namespace Middleware.Controllers
         string connectionString = Properties.Settings.Default.ConnStr;
 
         // GET api/somiod/app
-        //Return XML
         [HttpGet]
-        [Route("api/somiod/applications/{application}/containers")]
+        [Route("api/somiod/{application}/containers")]
         public HttpResponseMessage GetAllContainers([FromUri] string application)
         {
 
@@ -121,41 +120,9 @@ namespace Middleware.Controllers
 
         }
 
-        public List<string> DiscoverContainers()
-        {
-            try
-            {
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-
-                    // Your implementation to return a list of application names
-                    using (SqlCommand cmd = new SqlCommand("SELECT Name FROM Containers", connection))
-                    {
-                        using (SqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            List<string> containersNames = new List<string>();
-                            while (reader.Read())
-                            {
-                                containersNames.Add((string)reader["Name"]);
-                            }
-                            return containersNames;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Handle exceptions
-                Console.WriteLine($"Error discovering applications: {ex.Message}");
-                throw;
-            }
-        }
-
         //Get apenas dos containers desta aplicação 
-        //Return XML
         [HttpGet]
-        [Route("api/somiod/applications/{application}/containers/{container}")]
+        [Route("api/somiod/{application}/containers/{container}")]
         public HttpResponseMessage GetContainer([FromUri] string container)
         {
 
@@ -216,7 +183,6 @@ namespace Middleware.Controllers
             }
             catch (Exception)
             {
-                //fechar a ligação à BD
                 if (conn.State == System.Data.ConnectionState.Open)
                 {
                     conn.Close();
@@ -227,7 +193,7 @@ namespace Middleware.Controllers
 
         // POST Container
         [HttpPost]
-        [Route("api/somiod/applications/{application}/containers")]
+        [Route("api/somiod/{application}/containers")]
         public IHttpActionResult PostContainer(HttpRequestMessage request, string application)
         {
             #region Verificar Content
@@ -239,15 +205,6 @@ namespace Middleware.Controllers
 
             try
             {
-                #region Verificar Header
-                var discoverHeader = Request.Headers.GetValues("somiod-discover");
-
-                if (discoverHeader == null || !discoverHeader.Contains("container"))
-                {
-                    return BadRequest("Invalid or missing somiod-discover header.");
-                }
-                #endregion
-
                 #region Verificar XML Recebido 
                 HandlerXML handler = new HandlerXML();
 
@@ -299,6 +256,7 @@ namespace Middleware.Controllers
                         return InternalServerError();
                     }
                 }
+
 
                 Container container = new Container
                 {
@@ -369,7 +327,7 @@ namespace Middleware.Controllers
 
         // PUT Container Alterar rotas
         [HttpPut]
-        [Route("api/somiod/applications/{application}/containers/{container}")]
+        [Route("api/somiod/{application}/containers/{container}")]
         public IHttpActionResult Put(HttpRequestMessage request, string container)
         {
             if (request.Content == null)
@@ -379,14 +337,6 @@ namespace Middleware.Controllers
 
             try
             {
-                #region Verificar Header
-                var discoverHeader = Request.Headers.GetValues("somiod-discover");
-
-                if (discoverHeader == null || !discoverHeader.Contains("container"))
-                {
-                    return BadRequest("Invalid or missing somiod-discover header.");
-                }
-                #endregion
 
                 #region Verificar se o container existe
                 int containerId = -1;
@@ -486,7 +436,7 @@ namespace Middleware.Controllers
 
         // DELETE api/<controller>/5
         [HttpDelete]
-        [Route("api/somiod/applications/{application}/containers/{container}")]
+        [Route("api/somiod/{application}/containers/{container}")]
 
         public IHttpActionResult Delete(HttpRequestMessage request, string container)
         {
